@@ -2,16 +2,16 @@
 
 import { createAppKit } from '@reown/appkit/react'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
-import { scrollSepolia } from '@reown/appkit/networks'
 import { useEffect, useState } from 'react'
+import { scrollSepolia } from 'wagmi/chains'
 
 // 1. Get projectId at https://cloud.reown.com
 const projectId = 'dcc4482bd0a2041c9f7c640ed274c8a2'
 
 // 2. Create a metadata object
 const metadata = {
-  name: 'PisangBiru',
-  description: 'ETHUprising PisangBiru Application',
+  name: 'Blocknogotchi',
+  description: 'Blocknogotchi web application',
   url: 'https://blockmon.vercel.app/', // origin must match your domain & subdomain
   icons: ['https://avatars.mywebsite.com/']
 }

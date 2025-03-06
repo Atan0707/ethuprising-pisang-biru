@@ -9,24 +9,24 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@reown/appkit": "^1.6.9",
+    "@reown/appkit-adapter-ethers": "^1.6.9",
+    "@wagmi/core": "^1.4.13",
+    "ethers": "^6.13.5",
+    "next": "15.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.2.1",
-    "@reown/appkit": "latest",
-    "@reown/appkit-adapter-ethers": "latest",
-    "ethers": "^5.7.2",
-    "@wagmi/core": "^1.4.13",
     "wagmi": "^1.4.13"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
