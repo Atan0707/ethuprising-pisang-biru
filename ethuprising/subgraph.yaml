@@ -1,0 +1,56 @@
+specVersion: 1.2.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Blockmon
+    network: scroll-sepolia
+    source:
+      address: "0xe1e52a36E15eBf6785842e55b6d1D901819985ec"
+      abi: Blockmon
+      startBlock: 8414177
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Approval
+        - ApprovalForAll
+        - BatchMetadataUpdate
+        - BattleCompleted
+        - ExperienceGained
+        - MetadataUpdate
+        - OwnershipTransferred
+        - PokemonClaimed
+        - PokemonCreated
+        - PokemonLeveledUp
+        - Transfer
+      abis:
+        - name: Blockmon
+          file: ./abis/Blockmon.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,indexed uint256)
+          handler: handleApproval
+        - event: ApprovalForAll(indexed address,indexed address,bool)
+          handler: handleApprovalForAll
+        - event: BatchMetadataUpdate(uint256,uint256)
+          handler: handleBatchMetadataUpdate
+        - event: BattleCompleted(indexed uint256,indexed uint256,bool)
+          handler: handleBattleCompleted
+        - event: ExperienceGained(indexed uint256,uint256)
+          handler: handleExperienceGained
+        - event: MetadataUpdate(uint256)
+          handler: handleMetadataUpdate
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: PokemonClaimed(indexed uint256,indexed address)
+          handler: handlePokemonClaimed
+        - event: PokemonCreated(indexed uint256,bytes32)
+          handler: handlePokemonCreated
+        - event: PokemonLeveledUp(indexed uint256,uint8)
+          handler: handlePokemonLeveledUp
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+      file: ./src/blockmon.ts
