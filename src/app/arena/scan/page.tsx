@@ -13,7 +13,7 @@ const DUMMY_POKEMON = [
     hp: 80,
     maxHp: 80,
     type: "Electric",
-    image: "/images/pikachu.png",
+    image: "/images/pika.png",
     owner: "0x1234...5678",
     moves: ["Thunder Shock", "Quick Attack", "Thunderbolt", "Iron Tail"]
   },
@@ -30,12 +30,12 @@ const DUMMY_POKEMON = [
   },
   {
     id: 3,
-    name: "Blastoise",
+    name: "Charmander",
     level: 34,
     hp: 140,
     maxHp: 140,
     type: "Water",
-    image: "/images/blastoise.png",
+    image: "/images/charmander.png",
     owner: "0xABCD...EF12",
     moves: ["Hydro Pump", "Ice Beam", "Skull Bash", "Flash Cannon"]
   },
@@ -87,8 +87,8 @@ export default function ScanPage() {
   };
 
   const startBattle = () => {
-    setBattleStarted(true);
-    setBattleLog(prev => [...prev, "Battle started! Players take turns to attack."]);
+    // Redirect to the battle arena page
+    window.location.href = '/arena/battle';
   };
 
   const executeMove = (moveIndex) => {

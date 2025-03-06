@@ -45,12 +45,12 @@ export default function ArenaPage() {
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Check the global rankings and top performers.
             </p>
-            <button 
-              className="block w-full py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-center font-medium rounded-lg cursor-not-allowed"
-              disabled
+            <Link 
+              href="/leaderboard" 
+              className="block w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center font-medium rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
             >
-              Coming Soon
-            </button>
+              Go to Leaderboard
+            </Link>
           </div>
         </div>
       </div>
