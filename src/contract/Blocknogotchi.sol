@@ -69,7 +69,7 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     event PetSleepStatusChanged(uint256 indexed tokenId, bool isSleeping);
     event PetEvolved(uint256 indexed tokenId, uint8 newStage);
 
-    constructor() ERC721("Blocknogotchi", "BLOCK") Ownable(msg.sender) {}
+    constructor() ERC721("Blocknogotchi", "BNG") Ownable(msg.sender) {}
 
     /**
      * Admin function to create new pets that can be claimed
