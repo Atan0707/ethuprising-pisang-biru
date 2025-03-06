@@ -3,24 +3,43 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --wallet-connected: #10b981;
+  --wallet-connected-bg: rgba(16, 185, 129, 0.1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: system-ui, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --wallet-connected-bg: rgba(16, 185, 129, 0.2);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  padding-top: 4rem; /* Add space for fixed navbar */
+}
+
+/* Add styles for the appkit-button */
+appkit-button {
+  display: block;
+}
+
+/* Wallet address styles */
+.wallet-address {
+  background-color: var(--wallet-connected-bg);
+  color: var(--wallet-connected);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }

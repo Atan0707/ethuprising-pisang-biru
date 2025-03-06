@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Card Background -->
+  <rect x="40" y="60" width="120" height="80" rx="8" fill="#4338CA" />
+  <rect x="40" y="60" width="120" height="80" rx="8" stroke="white" stroke-width="2" />
+  
+  <!-- NFC Chip -->
+  <rect x="70" y="90" width="60" height="20" rx="2" fill="#FCD34D" />
+  
+  <!-- NFC Signal Waves -->
+  <path d="M110 80C122.15 80 132 89.85 132 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M110 70C127.67 70 142 84.33 142 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M110 60C133.2 60 152 78.8 152 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg> 

@@ -11,7 +11,13 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.2.1"
+    "next": "15.2.1",
+    "@reown/appkit": "latest",
+    "@reown/appkit-adapter-ethers": "latest",
+    "@reown/appkit/react": "latest",
+    "ethers": "^5.7.2",
+    "@wagmi/core": "^1.4.13",
+    "wagmi": "^1.4.13"
   },
   "devDependencies": {
     "typescript": "^5",
