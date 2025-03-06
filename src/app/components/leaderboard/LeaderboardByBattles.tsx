@@ -2,6 +2,7 @@
 
 import { useQuery, gql } from '@apollo/client';
 import { useState } from 'react';
+import Link from 'next/link';
 
 // GraphQL query to get battle data
 const GET_BATTLE_DATA = gql`
@@ -178,7 +179,9 @@ export default function LeaderboardByBattles() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-white">#{pokemon.tokenId}</div>
+                  <Link href={`/blockmon/${pokemon.tokenId}`} className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">
+                    #{pokemon.tokenId}
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">{pokemon.totalBattles}</div>
