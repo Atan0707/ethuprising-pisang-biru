@@ -98,3 +98,13 @@ body::after {
 .animate-bounce {
   animation: bounce 1.5s ease-in-out infinite;
 }
+
+/* Scan animation for arena scanner */
+@keyframes scan {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(100%); }
+}
+
+.animate-scan {
+  animation: scan 3s ease-in-out infinite;
+}
