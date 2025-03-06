@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@apollo/client": "^3.13.2",
     "@reown/appkit": "^1.6.9",
     "@reown/appkit-adapter-ethers": "^1.6.9",
     "@wagmi/core": "^1.4.13",
     "ethers": "^6.13.5",
+    "graphql": "^16.10.0",
     "next": "15.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
