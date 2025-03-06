@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Card Background -->
-  <rect x="40" y="60" width="120" height="80" rx="8" fill="#4338CA" />
-  <rect x="40" y="60" width="120" height="80" rx="8" stroke="white" stroke-width="2" />
-  
-  <!-- NFC Chip -->
-  <rect x="70" y="90" width="60" height="20" rx="2" fill="#FCD34D" />
-  
-  <!-- NFC Signal Waves -->
-  <path d="M110 80C122.15 80 132 89.85 132 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
-  <path d="M110 70C127.67 70 142 84.33 142 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
-  <path d="M110 60C133.2 60 152 78.8 152 102" stroke="white" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="#4F46E5">
+  <rect x="32" y="96" width="448" height="320" rx="24" ry="24" fill="#ffffff" stroke="#4F46E5" stroke-width="16"/>
+  <circle cx="128" cy="256" r="48" fill="none" stroke="#4F46E5" stroke-width="12" stroke-dasharray="15 10" opacity="0.7"/>
+  <circle cx="128" cy="256" r="24" fill="#4F46E5" opacity="0.9"/>
+  <path d="M192 192h192" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M192 256h160" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M192 320h128" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M400 160c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-32z" fill="#FFD700" opacity="0.7"/>
+  <path d="M400 288c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-32z" fill="#FFD700" opacity="0.7"/>
 </svg> 

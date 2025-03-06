@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Eip1193Provider, ethers } from 'ethers'
 import Blocknogotchi from '@/contract/Blocknogotchi.json'
 import { useAppKitProvider } from "@reown/appkit/react"
+import { toast } from 'sonner'
 
 // Pokemon data
 const POKEMON = [
@@ -66,11 +67,22 @@ export default function MintCard({ isAdmin }: MintCardProps) {
   const handleMint = async () => {
     if (!isAdmin || selectedPokemon === null || !customName.trim()) {
       setError('Please select a Pokemon and enter a name')
+      toast.error('Mint Error', {
+        description: 'Please select a Pokemon and enter a name',
+        icon: '⚠️',
+      })
       return
     }
 
     setIsLoading(true)
     setError(null)
+    
+    // Show minting pending toast
+    const pendingToastId = toast.loading('Minting in Progress', {
+      description: 'Creating your new Blocknogotchi pet. Please wait...',
+      icon: '🥚',
+      duration: Infinity,
+    })
     
     try {
       if (!walletProvider) {
@@ -92,8 +104,23 @@ export default function MintCard({ isAdmin }: MintCardProps) {
         pokemon.image
       )
       
+      // Show transaction submitted toast
+      toast.dismiss(pendingToastId)
+      const submittedToastId = toast.loading('Transaction Submitted', {
+        description: `Transaction hash: ${tx.hash.slice(0, 10)}...${tx.hash.slice(-8)}`,
+        icon: '📝',
+        duration: Infinity,
+      })
+      
       // Wait for transaction to be mined
       const receipt = await tx.wait()
+      
+      // Show transaction confirmed toast
+      toast.dismiss(submittedToastId)
+      toast.success('Mint Successful', {
+        description: `${customName} has been created! You can now store the claim hash in an NFC card.`,
+        icon: '🎉',
+      })
       
       // Parse the event to get tokenId and claimHash
       const event = receipt.logs
@@ -119,6 +146,14 @@ export default function MintCard({ isAdmin }: MintCardProps) {
       setIsLoading(false)
     } catch (err) {
       console.error('Error minting:', err)
+      
+      // Dismiss pending toast and show error toast
+      toast.dismiss(pendingToastId)
+      toast.error('Mint Failed', {
+        description: (err instanceof Error ? err.message : String(err)),
+        icon: '❌',
+      })
+      
       setError('Error minting: ' + (err instanceof Error ? err.message : String(err)))
       setIsLoading(false)
     }

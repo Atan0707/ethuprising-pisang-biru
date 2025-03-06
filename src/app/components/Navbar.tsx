@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react'
+import { toast } from 'sonner'
 // import { useAppKitAccount } from '@reown/appkit/react'
 
 export default function Navbar() {
@@ -21,9 +22,48 @@ export default function Navbar() {
     setMounted(true)
   }, [])
 
-  // Log connection attempts
+  // Add event listeners for wallet connection events
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleConnected = () => {
+        toast.success('Wallet Connected', {
+          description: 'Your wallet has been connected successfully.',
+          icon: '🦊',
+        })
+      }
+      
+      const handleDisconnected = () => {
+        toast.error('Wallet Disconnected', {
+          description: 'Your wallet has been disconnected.',
+          icon: '🔌',
+        })
+      }
+      
+      const handleChainChanged = () => {
+        toast.info('Network Changed', {
+          description: 'You have switched to a different blockchain network.',
+          icon: '🔄',
+        })
+      }
+      
+      document.addEventListener('appkit:connected', handleConnected)
+      document.addEventListener('appkit:disconnected', handleDisconnected)
+      document.addEventListener('appkit:chain-changed', handleChainChanged)
+      
+      return () => {
+        document.removeEventListener('appkit:connected', handleConnected)
+        document.removeEventListener('appkit:disconnected', handleDisconnected)
+        document.removeEventListener('appkit:chain-changed', handleChainChanged)
+      }
+    }
+  }, [])
+
+  // Handle wallet connection
   const handleConnectClick = () => {
-    console.log('Attempting to connect wallet...')
+    toast.loading('Connecting Wallet', {
+      description: 'Please approve the connection request in your wallet.',
+      icon: '🔗',
+    })
     open()
   }
 
@@ -35,6 +75,18 @@ export default function Navbar() {
             <Link href="/" className="flex-shrink-0 flex items-center">
               <span className="text-xl font-bold">Blocknogotchi</span>
             </Link>
+            <div className="hidden md:ml-6 md:flex md:space-x-4">
+              <Link href="/mint" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                Mint
+              </Link>
+              <Link href="/claim" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                Claim
+              </Link>
+            </div>
           </div>
           
           <div className="flex items-center">
@@ -43,7 +95,13 @@ export default function Navbar() {
                 {isConnected && address ? (
                   <div className="flex items-center gap-4">
                     <button 
-                      onClick={() => open({ view: 'Account' })}
+                      onClick={() => {
+                        open({ view: 'Account' })
+                        toast('Account Details', {
+                          description: 'Viewing your wallet account details.',
+                          icon: '👤',
+                        })
+                      }}
                       className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2"
                     >
                       <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
@@ -59,7 +117,13 @@ export default function Navbar() {
                   </button>
                 )}
                 <button 
-                  onClick={() => open({ view: 'Networks' })}
+                  onClick={() => {
+                    open({ view: 'Networks' })
+                    toast('Network Selection', {
+                      description: 'Choose a blockchain network to connect to.',
+                      icon: '🌐',
+                    })
+                  }}
                   className="ml-2 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   Networks

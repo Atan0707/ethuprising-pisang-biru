@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from 'sonner';
 
 import "./globals.css";
 import { AppKit } from "./context/appkit";
@@ -28,6 +29,7 @@ export default function RootLayout({
           <div className="pt-16">
             {children}
           </div>
+          <Toaster position="top-right" richColors closeButton />
         </AppKit>
       </body>
     </html>

@@ -62,7 +62,7 @@ export const AppKit = (props: {children: React.ReactNode}) => {
     <>
       {props.children}
       {/* Custom elements for AppKit can be added here */}
-      <appkit-button/> {/* Reown AppKit standard button */}
+      {/* <appkit-button/> Reown AppKit standard button */}
     </>
   )
 }

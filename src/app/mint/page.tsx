@@ -48,19 +48,8 @@ export default function MintPage() {
   if (!mounted) return null
 
   return (
-    <div className="min-h-screen pt-20 pb-10 relative">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <Image 
-          src="/pokemon-background.webp" 
-          alt="Pokemon Background" 
-          fill 
-          style={{ objectFit: 'cover', opacity: 0.15 }}
-          priority
-        />
-      </div>
-      
-      <div className="max-w-4xl mx-auto px-4 relative z-10">
+    <div className="min-h-screen pt-20 pb-10">
+      <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-8 text-blue-600">Mint Blocknogotchi</h1>
         
         {!isConnected ? (
