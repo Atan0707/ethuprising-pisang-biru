@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Eip1193Provider, ethers } from 'ethers'
-import Blocknogotchi from '@/contract/Blocknogotchi.json'
+import Blockmon from '@/contract/Blockmon.json'
 import { useAppKitProvider } from "@reown/appkit/react"
 import { toast } from 'sonner'
+import NfcModal from './NfcModal'
 
 // Pokemon data
 const POKEMON = [
@@ -32,10 +33,10 @@ const POKEMON = [
 ]
 
 // Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blocknogotchi.abi
+const CONTRACT_ABI = Blockmon.abi
 
 // Contract address
-const CONTRACT_ADDRESS = '0x41C29e60aB713998E78cE6a86e55D3E23D68deb3'
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || ''
 
 interface MintCardProps {
   isAdmin: boolean;
@@ -54,6 +55,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [mintResult, setMintResult] = useState<{tokenId: string, claimHash: string} | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isNfcModalOpen, setIsNfcModalOpen] = useState(false)
   const { walletProvider } = useAppKitProvider('eip155')
 
   // Select a random Pokemon
@@ -97,7 +99,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
       
       // Call createPet function (name, species, rarity, uri)
       // Rarity is set to 0 (COMMON) for all Pokemon as requested
-      const tx = await contract.createPet(
+      const tx = await contract.createPokemon(
         customName,
         pokemon.species,
         0, // COMMON rarity
@@ -131,7 +133,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
             return null
           }
         })
-        .find((event: EventLog | null) => event && event.name === 'PetCreated')
+        .find((event: EventLog | null) => event && event.name === 'PokemonCreated')
       
       if (event && event.args) {
         const tokenId = event.args[0].toString()
@@ -157,6 +159,11 @@ export default function MintCard({ isAdmin }: MintCardProps) {
       setError('Error minting: ' + (err instanceof Error ? err.message : String(err)))
       setIsLoading(false)
     }
+  }
+
+  // Open NFC modal
+  const handleWriteToNfc = () => {
+    setIsNfcModalOpen(true)
   }
 
   if (!isAdmin) {
@@ -201,12 +208,20 @@ export default function MintCard({ isAdmin }: MintCardProps) {
             </div>
             
             <div className="flex justify-center mt-6">
-              <Image src="/nfc-card.svg" alt="NFC Card" width={80} height={80} className="opacity-80" />
+              <button
+                onClick={handleWriteToNfc}
+                className="flex items-center px-6 py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Write to NFC Card
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-6">
           <button
             onClick={() => {
               setMintResult(null)
@@ -218,6 +233,13 @@ export default function MintCard({ isAdmin }: MintCardProps) {
             Mint Another
           </button>
         </div>
+
+        {/* NFC Modal */}
+        <NfcModal 
+          isOpen={isNfcModalOpen}
+          onClose={() => setIsNfcModalOpen(false)}
+          claimHash={mintResult.claimHash}
+        />
       </div>
     )
   }

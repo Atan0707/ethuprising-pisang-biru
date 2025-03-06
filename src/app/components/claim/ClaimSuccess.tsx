@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import NFCWriter from './NFCWriter'
 
 interface ClaimSuccessProps {
   tokenId: string
@@ -14,6 +15,7 @@ interface ClaimSuccessProps {
 
 export default function ClaimSuccess({ tokenId, petName, image, onReset }: ClaimSuccessProps) {
   const [confetti, setConfetti] = useState<{ x: number; y: number; size: number; color: string }[]>([])
+  const [showNFCWriter, setShowNFCWriter] = useState(false)
   
   // Create confetti effect and show success toast on mount
   useEffect(() => {
@@ -59,6 +61,15 @@ export default function ClaimSuccess({ tokenId, petName, image, onReset }: Claim
     onReset()
   }
 
+  // Open NFC writer popup
+  const handleOpenNFCWriter = () => {
+    setShowNFCWriter(true)
+    toast.info('NFC Writer', {
+      description: 'You can now store your pet information on your NFC card.',
+      icon: '📱',
+    })
+  }
+
   return (
     <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-8 shadow-xl backdrop-blur-sm relative overflow-hidden">
       {/* Confetti */}
@@ -79,7 +90,7 @@ export default function ClaimSuccess({ tokenId, petName, image, onReset }: Claim
       ))}
       
       <div className="relative z-10">
-        <h2 className="text-2xl font-bold text-center mb-6 text-green-600">Claim Successful!</h2>
+        <h2 className="text-4xl font-bold text-center mb-6 text-green-600">Claim Successful!</h2>
         
         <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
           <div className="w-48 h-48 relative">
@@ -113,13 +124,21 @@ export default function ClaimSuccess({ tokenId, petName, image, onReset }: Claim
                 href={`/pet/${tokenId}`}
                 className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
                 onClick={() => toast('Viewing Pet', {
-                  description: `Taking you to ${petName}'s profile page.`,
+                  description: `Taking you to ${petName}&apos;s profile page.`,
                   icon: '👁️',
                 })}
               >
                 <Image src="/pokeball.svg" alt="Pokeball" width={20} height={20} />
                 View Pet
               </Link>
+              
+              <button
+                onClick={handleOpenNFCWriter}
+                className="px-6 py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md flex items-center gap-2"
+              >
+                <Image src="/nfc-write.svg" alt="NFC" width={20} height={20} />
+                Store on NFC Card
+              </button>
               
               <button
                 onClick={handleReset}
@@ -137,9 +156,18 @@ export default function ClaimSuccess({ tokenId, petName, image, onReset }: Claim
             <li>Visit your pet regularly to feed and play with it</li>
             <li>Watch your pet grow and evolve as you take care of it</li>
             <li>Collect more Blocknogotchi pets to build your collection</li>
+            <li>Store your pet information on an NFC card for easy access</li>
           </ul>
         </div>
       </div>
+      
+      {/* NFC Writer Popup */}
+      <NFCWriter 
+        tokenId={tokenId}
+        petName={petName}
+        isOpen={showNFCWriter}
+        onClose={() => setShowNFCWriter(false)}
+      />
     </div>
   )
 } 

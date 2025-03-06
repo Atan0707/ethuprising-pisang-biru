@@ -4,16 +4,16 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react'
 import { Eip1193Provider, ethers } from 'ethers'
-import Blocknogotchi from '@/contract/Blocknogotchi.json'
-import NFCScanner from '../components/claim/NFCScanner'
-import ClaimSuccess from '../components/claim/ClaimSuccess'
+import Blockmon from '@/contract/Blockmon.json'
+import NFCScanner from '@/app/components/claim/NFCScanner'
+import ClaimSuccess from '@/app/components/claim/ClaimSuccess'
 import { toast } from 'sonner'
 
 // Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blocknogotchi.abi
+const CONTRACT_ABI = Blockmon.abi
 
 // Contract address
-const CONTRACT_ADDRESS = '0x41C29e60aB713998E78cE6a86e55D3E23D68deb3'
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xe1e52a36E15eBf6785842e55b6d1D901819985ec'
 
 // Type for event logs
 interface EventLog {
@@ -28,11 +28,70 @@ export default function ClaimPage() {
   const [isScanning, setIsScanning] = useState(false)
   const [claimResult, setClaimResult] = useState<{tokenId: string, petName: string, image: string} | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [debugHash, setDebugHash] = useState<string | null>(null)
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Debug function to get the latest claim hash
+  const getLatestClaimHash = async () => {
+    if (!isConnected || !address || !walletProvider) {
+      setError('Please connect your wallet to debug')
+      return
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider)
+      const signer = await provider.getSigner()
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
+      
+      // Create a new pet to get the claim hash
+      const createTx = await contract.createPokemon(
+        "Debug Pokemon", 
+        0, // FIRE species
+        0, // COMMON rarity
+        "https://example.com/pokemon.json"
+      )
+      
+      // Wait for transaction to be mined
+      const receipt = await createTx.wait()
+      
+      // Parse the event to get tokenId and claimHash
+      const event = receipt.logs
+        .map((log: unknown) => {
+          try {
+            return contract.interface.parseLog(log as { topics: string[]; data: string })
+          } catch {
+            return null
+          }
+        })
+        .find((event: EventLog | null) => event && event.name === 'PokemonCreated')
+      
+      if (event && event.args && event.args.length >= 2) {
+        const tokenId = event.args[0].toString()
+        const claimHash = event.args[1]
+        
+        setDebugHash(claimHash)
+        toast.info('New Claim Hash Created', {
+          description: `Token ID: ${tokenId}, Hash: ${claimHash.slice(0, 10)}...`,
+          duration: 10000,
+        })
+        
+        console.log('New token ID:', tokenId)
+        console.log('Claim hash:', claimHash)
+        
+        return claimHash
+      } else {
+        throw new Error('Failed to parse PokemonCreated event')
+      }
+    } catch (err) {
+      console.error('Error getting claim hash:', err)
+      setError('Error getting claim hash: ' + (err instanceof Error ? err.message : String(err)))
+      return null
+    }
+  }
 
   // Handle claim with hash from NFC card
   const handleClaim = async (claimHash: string) => {
@@ -56,8 +115,8 @@ export default function ClaimPage() {
       const signer = await provider.getSigner()
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer)
       
-      // Call claimPet function with the hash from NFC card
-      const tx = await contract.claimPet(claimHash)
+      // Call claimPokemon function with the hash from NFC card
+      const tx = await contract.claimPokemon(claimHash)
       
       // Show transaction submitted toast
       toast.dismiss(pendingToastId)
@@ -86,18 +145,18 @@ export default function ClaimPage() {
             return null
           }
         })
-        .find((event: EventLog | null) => event && event.name === 'PetClaimed')
+        .find((event: EventLog | null) => event && event.name === 'PokemonClaimed')
       
       if (event && event.args) {
         const tokenId = event.args[0].toString()
         
         // Get pet details
-        const pet = await contract.getPet(tokenId)
+        const pokemon = await contract.getPokemon(tokenId)
         
         setClaimResult({
           tokenId,
-          petName: pet.name,
-          image: pet.uri
+          petName: pokemon.name,
+          image: pokemon.tokenURI
         })
       }
     } catch (err) {
@@ -136,12 +195,36 @@ export default function ClaimPage() {
             onReset={() => setClaimResult(null)}
           />
         ) : (
-          <NFCScanner 
-            isScanning={isScanning} 
-            setIsScanning={setIsScanning} 
-            onScan={handleClaim}
-            error={error}
-          />
+          <>
+            <NFCScanner 
+              isScanning={isScanning} 
+              setIsScanning={setIsScanning} 
+              onScan={handleClaim}
+              error={error}
+            />
+            
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={getLatestClaimHash}
+                className="px-6 py-3 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Debug: Get Latest Claim Hash
+              </button>
+            </div>
+            
+            {debugHash && (
+              <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <p className="font-semibold mb-1">Latest Claim Hash:</p>
+                <p className="font-mono text-sm break-all">{debugHash}</p>
+                <button
+                  onClick={() => handleClaim(debugHash)}
+                  className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Use This Hash
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="#4F46E5">
-  <rect x="32" y="96" width="448" height="320" rx="24" ry="24" fill="#ffffff" stroke="#4F46E5" stroke-width="16"/>
-  <circle cx="128" cy="256" r="48" fill="none" stroke="#4F46E5" stroke-width="12" stroke-dasharray="15 10" opacity="0.7"/>
-  <circle cx="128" cy="256" r="24" fill="#4F46E5" opacity="0.9"/>
-  <path d="M192 192h192" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
-  <path d="M192 256h160" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
-  <path d="M192 320h128" stroke="#4F46E5" stroke-width="16" stroke-linecap="round"/>
-  <path d="M400 160c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-32z" fill="#FFD700" opacity="0.7"/>
-  <path d="M400 288c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-32z" fill="#FFD700" opacity="0.7"/>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Card background -->
+  <rect x="20" y="40" width="160" height="120" rx="10" fill="#6366F1" />
+  <rect x="20" y="40" width="160" height="120" rx="10" fill="url(#paint0_linear)" />
+  
+  <!-- Chip -->
+  <rect x="40" y="80" width="30" height="30" rx="2" fill="#FFD700" />
+  <rect x="45" y="85" width="20" height="5" fill="#E6C200" />
+  <rect x="45" y="95" width="20" height="5" fill="#E6C200" />
+  <rect x="45" y="105" width="20" height="5" fill="#E6C200" />
+  
+  <!-- NFC waves -->
+  <path d="M90 95C90 87.268 96.268 81 104 81C111.732 81 118 87.268 118 95C118 102.732 111.732 109 104 109C96.268 109 90 102.732 90 95Z" stroke="white" stroke-width="3" stroke-opacity="0.8" />
+  <path d="M83 95C83 83.402 92.402 74 104 74C115.598 74 125 83.402 125 95C125 106.598 115.598 116 104 116C92.402 116 83 106.598 83 95Z" stroke="white" stroke-width="2" stroke-opacity="0.6" />
+  <path d="M76 95C76 79.536 88.536 67 104 67C119.464 67 132 79.536 132 95C132 110.464 119.464 123 104 123C88.536 123 76 110.464 76 95Z" stroke="white" stroke-width="1.5" stroke-opacity="0.4" />
+  
+  <!-- Gradient for card -->
+  <defs>
+    <linearGradient id="paint0_linear" x1="20" y1="40" x2="180" y2="160" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#818CF8" />
+      <stop offset="1" stop-color="#4F46E5" />
+    </linearGradient>
+  </defs>
 </svg> 
