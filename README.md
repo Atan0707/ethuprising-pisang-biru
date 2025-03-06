@@ -1,6 +1,6 @@
-# Blocknogotchi
+# Tag & Clash
 
-Blocknogotchi is a blockchain-based virtual pet game inspired by Tamagotchi. Adopt, care for, and evolve your virtual pets on the blockchain!
+Tag & Clash is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world.
 
 ## Features
 

@@ -52,7 +52,7 @@ export default function ClaimPage() {
         "Debug Pokemon", 
         0, // FIRE species
         0, // COMMON rarity
-        "https://example.com/pokemon.json"
+        "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreigryiqie52hop6px6afkv4bzixkcxjp5izl2fehcotjnvbmgdpwnq"
       )
       
       // Wait for transaction to be mined
