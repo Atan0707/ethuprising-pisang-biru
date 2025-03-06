@@ -86,6 +86,9 @@ export default function Navbar() {
                 </span>
                 Claim
               </Link>
+              <Link href="/blockmon" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                Blockmon
+              </Link>
               <Link href="/leaderboard" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
                 Leaderboard
               </Link>

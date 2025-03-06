@@ -67,6 +67,7 @@ export default function LeaderboardByBattles() {
       }
       
       battleStats[battle.tokenId].totalBattles += 1;
+      
       if (battle.won) {
         battleStats[battle.tokenId].wins += 1;
       }
@@ -85,7 +86,7 @@ export default function LeaderboardByBattles() {
         };
       }
       
-      battleStats[battle.opponentId].totalBattles += 1;
+      // battleStats[battle.opponentId].totalBattles += 1;
       
       if (parseInt(battle.blockTimestamp) > parseInt(battleStats[battle.opponentId].lastBattle)) {
         battleStats[battle.opponentId].lastBattle = battle.blockTimestamp;

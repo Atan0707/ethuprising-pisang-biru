@@ -4,13 +4,19 @@ import { useQuery, gql } from '@apollo/client';
 import { useState } from 'react';
 import Link from 'next/link';
 
-// GraphQL query to get Pokemon level data
-const GET_POKEMON_LEVELS = gql`
-  query GetPokemonLevels {
-    pokemonLeveledUps(first: 100, orderBy: newLevel, orderDirection: desc) {
+// GraphQL query to get Pokemon level data and created Pokemon
+const GET_POKEMON_DATA = gql`
+  query GetPokemonData {
+    pokemonLeveledUps(first: 1000, orderBy: newLevel, orderDirection: desc) {
       id
       tokenId
       newLevel
+      blockTimestamp
+      transactionHash
+    }
+    pokemonCreateds(first: 1000) {
+      id
+      tokenId
       blockTimestamp
       transactionHash
     }
@@ -25,11 +31,26 @@ interface PokemonLevel {
   transactionHash: string;
 }
 
+interface PokemonCreated {
+  id: string;
+  tokenId: string;
+  blockTimestamp: string;
+  transactionHash: string;
+}
+
+interface ProcessedPokemon {
+  id: string;
+  tokenId: string;
+  level: number;
+  blockTimestamp: string;
+  transactionHash: string;
+}
+
 export default function LeaderboardByLevel() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   
-  const { loading, error, data } = useQuery(GET_POKEMON_LEVELS);
+  const { loading, error, data } = useQuery(GET_POKEMON_DATA);
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
@@ -43,21 +64,42 @@ export default function LeaderboardByLevel() {
     </div>
   );
 
-  // Process data to get unique Pokemon with highest level
-  const processedData: Record<string, PokemonLevel> = {};
+  // Process data to get all Pokemon with their highest level
+  const processedData: Record<string, ProcessedPokemon> = {};
   
+  // First, add all created Pokemon with level 0
+  if (data?.pokemonCreateds) {
+    data.pokemonCreateds.forEach((item: PokemonCreated) => {
+      const tokenId = item.tokenId;
+      processedData[tokenId] = {
+        id: item.id,
+        tokenId: item.tokenId,
+        level: 0,
+        blockTimestamp: item.blockTimestamp,
+        transactionHash: item.transactionHash
+      };
+    });
+  }
+  
+  // Then, update with level data for Pokemon that have leveled up
   if (data?.pokemonLeveledUps) {
     data.pokemonLeveledUps.forEach((item: PokemonLevel) => {
       const tokenId = item.tokenId;
-      if (!processedData[tokenId] || processedData[tokenId].newLevel < item.newLevel) {
-        processedData[tokenId] = item;
+      if (!processedData[tokenId] || processedData[tokenId].level < item.newLevel) {
+        processedData[tokenId] = {
+          id: item.id,
+          tokenId: item.tokenId,
+          level: item.newLevel,
+          blockTimestamp: item.blockTimestamp,
+          transactionHash: item.transactionHash
+        };
       }
     });
   }
 
   // Convert to array and sort by level
   const sortedPokemon = Object.values(processedData)
-    .sort((a: PokemonLevel, b: PokemonLevel) => b.newLevel - a.newLevel);
+    .sort((a: ProcessedPokemon, b: ProcessedPokemon) => b.level - a.level);
 
   // Paginate the data
   const paginatedData = sortedPokemon.slice((page - 1) * pageSize, page * pageSize);
@@ -81,12 +123,12 @@ export default function LeaderboardByLevel() {
                 Level
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Last Level Up
+                Last Update
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {paginatedData.map((pokemon: PokemonLevel, index: number) => (
+            {paginatedData.map((pokemon: ProcessedPokemon, index: number) => (
               <tr key={pokemon.id} className={index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -108,7 +150,7 @@ export default function LeaderboardByLevel() {
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">Level {pokemon.newLevel}</div>
+                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">Level {pokemon.level}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {new Date(parseInt(pokemon.blockTimestamp) * 1000).toLocaleDateString()}
