@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 // Dummy Pokémon data for testing
 const DUMMY_POKEMON = [
@@ -32,9 +31,6 @@ const DUMMY_POKEMON = [
 ];
 
 export default function BattleArenaPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  
   // State for battle
   const [firstPokemon, setFirstPokemon] = useState(DUMMY_POKEMON[0]);
   const [secondPokemon, setSecondPokemon] = useState(DUMMY_POKEMON[1]);

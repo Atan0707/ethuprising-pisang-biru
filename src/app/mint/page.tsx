@@ -38,7 +38,7 @@ export default function MintPage() {
     if (mounted) {
       checkAdmin()
     }
-  }, [address, isConnected, mounted])
+  }, [address, isConnected, mounted, walletProvider])
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {

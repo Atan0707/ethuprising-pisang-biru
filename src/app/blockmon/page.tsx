@@ -16,11 +16,11 @@ interface NDEFRecord {
 }
 
 export default function BlockmonScanPage() {
-  const router = useRouter();
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [readingStatus, setReadingStatus] = useState<NFCReadingStatus>({ status: 'idle' });
   // We're using scannedId in the UI indirectly through readingStatus.message
   const [, setScannedId] = useState<string | null>(null);
+  const router = useRouter();
 
   // Check if NFC is supported
   useEffect(() => {

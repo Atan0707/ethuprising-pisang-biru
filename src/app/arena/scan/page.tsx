@@ -1,11 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+// Define Pokemon interface
+interface Pokemon {
+  id: number;
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  type: string;
+  image: string;
+  owner: string;
+  moves: string[];
+}
+
 // Dummy data for Pokémon
-const DUMMY_POKEMON = [
+const DUMMY_POKEMON: Pokemon[] = [
   {
     id: 1,
     name: "Pikachu",
@@ -55,11 +68,18 @@ const DUMMY_POKEMON = [
 export default function ScanPage() {
   const [scanStage, setScanStage] = useState(0); // 0: no scan, 1: first scan, 2: second scan, 3: battle ready
   const [isScanning, setIsScanning] = useState(false);
-  const [firstPokemon, setFirstPokemon] = useState(null);
-  const [secondPokemon, setSecondPokemon] = useState(null);
+  const [firstPokemon, setFirstPokemon] = useState<Pokemon | null>(null);
+  const [secondPokemon, setSecondPokemon] = useState<Pokemon | null>(null);
   const [battleStarted, setBattleStarted] = useState(false);
-  const [battleLog, setBattleLog] = useState([]);
+  const [battleLog, setBattleLog] = useState<string[]>([]);
   const [currentTurn, setCurrentTurn] = useState(1); // 1: first player, 2: second player
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(3);
+  const [showReadyMessage, setShowReadyMessage] = useState(false);
+
+  // Sound effect references
+  const countdownSoundRef = useRef<HTMLAudioElement | null>(null);
+  const battleStartSoundRef = useRef<HTMLAudioElement | null>(null);
 
   const handleScan = () => {
     if (scanStage >= 2) return;
@@ -87,12 +107,49 @@ export default function ScanPage() {
   };
 
   const startBattle = () => {
-    // Redirect to the battle arena page
-    window.location.href = '/arena/battle';
+    // Start the countdown animation
+    setShowCountdown(true);
+    
+    // Play countdown sound
+    if (countdownSoundRef.current) {
+      countdownSoundRef.current.currentTime = 0;
+      countdownSoundRef.current.play().catch(error => console.error("Error playing countdown sound:", error));
+    }
+    
+    // Countdown sequence
+    const countdownInterval = setInterval(() => {
+      setCountdownValue(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          // Show "READY FOR THE NEXT BATTLE" message
+          setShowReadyMessage(true);
+          
+          // Play battle start sound
+          if (battleStartSoundRef.current) {
+            battleStartSoundRef.current.play().catch(error => console.error("Error playing battle start sound:", error));
+          }
+          
+          // Redirect after showing the message
+          setTimeout(() => {
+            window.location.href = '/arena/battle';
+          }, 1500); // Wait 1.5 seconds after showing the message
+          
+          return 0;
+        }
+        
+        // Play countdown sound for each number
+        if (countdownSoundRef.current) {
+          countdownSoundRef.current.currentTime = 0;
+          countdownSoundRef.current.play().catch(error => console.error("Error playing countdown sound:", error));
+        }
+        
+        return prev - 1;
+      });
+    }, 1000);
   };
 
-  const executeMove = (moveIndex) => {
-    if (!battleStarted) return;
+  const executeMove = (moveIndex: number) => {
+    if (!battleStarted || !firstPokemon || !secondPokemon) return;
     
     const attacker = currentTurn === 1 ? firstPokemon : secondPokemon;
     const defender = currentTurn === 1 ? secondPokemon : firstPokemon;
@@ -101,17 +158,23 @@ export default function ScanPage() {
     // Calculate random damage between 10-25
     const damage = Math.floor(Math.random() * 16) + 10;
     
-    // Update defender's HP
-    if (currentTurn === 1) {
-      setSecondPokemon(prev => ({
-        ...prev,
-        hp: Math.max(0, prev.hp - damage)
-      }));
-    } else {
-      setFirstPokemon(prev => ({
-        ...prev,
-        hp: Math.max(0, prev.hp - damage)
-      }));
+    // Update HP
+    if (currentTurn === 1 && secondPokemon) {
+      setSecondPokemon(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          hp: Math.max(0, prev.hp - damage)
+        };
+      });
+    } else if (firstPokemon) {
+      setFirstPokemon(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          hp: Math.max(0, prev.hp - damage)
+        };
+      });
     }
     
     // Add to battle log
@@ -146,6 +209,30 @@ export default function ScanPage() {
 
   return (
     <div className="relative">
+      {/* Sound effects */}
+      <audio ref={countdownSoundRef} src="/sounds/countdown-beep.mp3" preload="auto"></audio>
+      <audio ref={battleStartSoundRef} src="/sounds/battle-start.mp3" preload="auto"></audio>
+      
+      {/* Countdown overlay */}
+      {showCountdown && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center">
+          {!showReadyMessage ? (
+            <div className="text-9xl font-bold text-white animate-pulse">
+              {countdownValue}
+            </div>
+          ) : (
+            <div className="text-center animate-bounce">
+              <div className="text-4xl md:text-6xl font-bold text-white mb-4">
+                READY FOR THE
+              </div>
+              <div className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent">
+                NEXT BATTLE!
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Background image - positioned to respect navbar */}
       <div 
         className="fixed inset-0 top-16 -z-10" 
@@ -205,7 +292,7 @@ export default function ScanPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="w-20 h-20 relative mr-4 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center">
-                          {firstPokemon.image ? (
+                          {firstPokemon?.image ? (
                             <div className="relative w-16 h-16">
                               <Image 
                                 src={firstPokemon.image} 
@@ -215,31 +302,31 @@ export default function ScanPage() {
                               />
                             </div>
                           ) : (
-                            <div className="text-4xl">🎮</div>
+                            <div className="text-gray-400 text-xs">No Image</div>
                           )}
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-white">{firstPokemon.name}</h3>
-                          <p className="text-blue-300">Lv. {firstPokemon.level} • {firstPokemon.type}</p>
-                          <p className="text-xs text-gray-300 mt-1">Owner: {firstPokemon.owner}</p>
+                          <h3 className="text-xl font-bold text-white">{firstPokemon?.name}</h3>
+                          <p className="text-blue-300">Lv. {firstPokemon?.level} • {firstPokemon?.type}</p>
+                          <p className="text-xs text-gray-300 mt-1">Owner: {firstPokemon?.owner}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="mb-1">
-                          <span className="text-white font-medium">{firstPokemon.hp}/{firstPokemon.maxHp} HP</span>
+                          <span className="text-white font-medium">{firstPokemon?.hp}/{firstPokemon?.maxHp} HP</span>
                         </div>
                         <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-green-500 to-emerald-400" 
-                            style={{ width: `${(firstPokemon.hp / firstPokemon.maxHp) * 100}%` }}
+                            style={{ width: `${firstPokemon ? (firstPokemon.hp / firstPokemon.maxHp) * 100 : 0}%` }}
                           ></div>
                         </div>
                       </div>
                     </div>
                     
-                    {battleStarted && currentTurn === 1 && (
+                    {battleStarted && currentTurn === 1 && firstPokemon && (
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        {firstPokemon.moves.map((move, index) => (
+                        {firstPokemon.moves.map((move: string, index: number) => (
                           <button 
                             key={index}
                             onClick={() => executeMove(index)}
@@ -275,7 +362,7 @@ export default function ScanPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="w-20 h-20 relative mr-4 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center">
-                          {secondPokemon.image ? (
+                          {secondPokemon?.image ? (
                             <div className="relative w-16 h-16">
                               <Image 
                                 src={secondPokemon.image} 
@@ -285,31 +372,31 @@ export default function ScanPage() {
                               />
                             </div>
                           ) : (
-                            <div className="text-4xl">🎮</div>
+                            <div className="text-gray-400 text-xs">No Image</div>
                           )}
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-white">{secondPokemon.name}</h3>
-                          <p className="text-red-300">Lv. {secondPokemon.level} • {secondPokemon.type}</p>
-                          <p className="text-xs text-gray-300 mt-1">Owner: {secondPokemon.owner}</p>
+                          <h3 className="text-xl font-bold text-white">{secondPokemon?.name}</h3>
+                          <p className="text-red-300">Lv. {secondPokemon?.level} • {secondPokemon?.type}</p>
+                          <p className="text-xs text-gray-300 mt-1">Owner: {secondPokemon?.owner}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="mb-1">
-                          <span className="text-white font-medium">{secondPokemon.hp}/{secondPokemon.maxHp} HP</span>
+                          <span className="text-white font-medium">{secondPokemon?.hp}/{secondPokemon?.maxHp} HP</span>
                         </div>
                         <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-red-500 to-orange-400" 
-                            style={{ width: `${(secondPokemon.hp / secondPokemon.maxHp) * 100}%` }}
+                            style={{ width: `${secondPokemon ? (secondPokemon.hp / secondPokemon.maxHp) * 100 : 0}%` }}
                           ></div>
                         </div>
                       </div>
                     </div>
                     
-                    {battleStarted && currentTurn === 2 && (
+                    {battleStarted && currentTurn === 2 && secondPokemon && (
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        {secondPokemon.moves.map((move, index) => (
+                        {secondPokemon.moves.map((move: string, index: number) => (
                           <button 
                             key={index}
                             onClick={() => executeMove(index)}
@@ -372,7 +459,7 @@ export default function ScanPage() {
                 ) : (
                   <div className="text-center w-full">
                     <p className="text-white mb-2">
-                      {currentTurn === 1 ? firstPokemon.name : secondPokemon.name}'s turn to attack!
+                      {currentTurn === 1 && firstPokemon ? firstPokemon.name : secondPokemon?.name}&apos;s turn to attack!
                     </p>
                     <p className="text-sm text-gray-300">
                       Select a move above to attack
