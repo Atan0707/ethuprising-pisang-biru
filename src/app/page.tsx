@@ -3,7 +3,24 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen pt-20 pb-10">
+    <div className="min-h-screen pt-20 pb-10 relative">
+      {/* Background image - positioned to respect navbar */}
+      <div 
+        className="fixed inset-0 top-16 -z-10" 
+        style={{
+          backgroundImage: "url('/images/back.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* Gradient overlay */}
+       
+        
+        {/* Pattern overlay */}
+        
+      </div>
+      
       <div className="max-w-4xl mx-auto px-4">
         <main className="flex flex-col items-center justify-center gap-12 px-6 text-center lg:gap-16 py-16">
           <div className="flex flex-col gap-4 lg:gap-6">
