@@ -190,6 +190,21 @@ export default function Navbar() {
               >
                 Leaderboard
               </Link>
+              {isConnected && (
+                <Link 
+                  href="/profile" 
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                    isActive('/profile') || isActive('/owner') 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  My Blockmon
+                </Link>
+              )}
             </div>
           </div>
           
@@ -346,6 +361,22 @@ export default function Navbar() {
               >
                 Leaderboard
               </Link>
+              {isConnected && (
+                <Link 
+                  href="/profile" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors flex items-center ${
+                    isActive('/profile') || isActive('/owner')
+                      ? 'text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-800' 
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  My Blockmon
+                </Link>
+              )}
               <div className="pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
                 <button 
                   onClick={() => {
