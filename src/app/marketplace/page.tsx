@@ -147,7 +147,7 @@ export default function MarketplacePage() {
                   onClick={handleListNFT}
                   className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
-                  List NFT
+                  Sell your NFT
                 </button>
               </div>
             )}

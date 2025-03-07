@@ -225,6 +225,23 @@ export interface DetailedListing {
     speed: number;
   };
   history: HistoryItem[];
+  rawData: {
+    name: string;
+    attribute: number;
+    rarity: number;
+    level: number;
+    hp: number;
+    baseDamage: number;
+    battleCount: number;
+    battleWins: number;
+    birthTime: number;
+    lastBattleTime: number;
+    claimed: boolean;
+    owner: string;
+    tokenURI: string;
+    age: number;
+    experience: number;
+  };
 }
 
 /**
@@ -285,6 +302,61 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
       return [];
     }
     
+    // Get active marketplace listings to filter out listed NFTs
+    const { data: marketplaceData } = await marketplaceGraphClient.query({
+      query: GET_MARKETPLACE_LISTINGS,
+      fetchPolicy: 'network-only',
+    });
+    
+    // Create a map to track the most recent event for each token ID
+    const tokenEventMap = new Map<string, { event: string, timestamp: number }>();
+    
+    // Process listing created events
+    if (marketplaceData.listingCreateds) {
+      marketplaceData.listingCreateds.forEach((listing: { tokenId: string, blockTimestamp: string }) => {
+        const timestamp = parseInt(listing.blockTimestamp);
+        const currentEvent = tokenEventMap.get(listing.tokenId);
+        
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(listing.tokenId, { event: 'created', timestamp });
+        }
+      });
+    }
+    
+    // Process listing cancelled events
+    if (marketplaceData.listingCancelleds) {
+      marketplaceData.listingCancelleds.forEach((cancelled: { tokenId: string, blockTimestamp: string }) => {
+        const timestamp = parseInt(cancelled.blockTimestamp);
+        const currentEvent = tokenEventMap.get(cancelled.tokenId);
+        
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(cancelled.tokenId, { event: 'cancelled', timestamp });
+        }
+      });
+    }
+    
+    // Process listing purchased events
+    if (marketplaceData.listingPurchaseds) {
+      marketplaceData.listingPurchaseds.forEach((purchased: { tokenId: string, blockTimestamp: string }) => {
+        const timestamp = parseInt(purchased.blockTimestamp);
+        const currentEvent = tokenEventMap.get(purchased.tokenId);
+        
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(purchased.tokenId, { event: 'purchased', timestamp });
+        }
+      });
+    }
+    
+    // Create a set of currently listed token IDs to filter them out
+    const listedTokenIds = new Set<number>();
+    tokenEventMap.forEach((eventData, tokenId) => {
+      if (eventData.event === 'created') {
+        listedTokenIds.add(Number(tokenId));
+      }
+    });
+    
+    console.log(`Found ${listedTokenIds.size} currently listed tokens to filter out`);
+    
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
     const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
@@ -293,6 +365,12 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
     const ownedTokens: BlockmonData[] = [];
     const tokenPromises = Array.from(tokenIds).map(async (tokenId) => {
       try {
+        // Skip tokens that are currently listed on the marketplace
+        if (listedTokenIds.has(tokenId)) {
+          console.log(`Skipping token ${tokenId} as it is currently listed on the marketplace`);
+          return;
+        }
+        
         const data = await contract.getPokemon(tokenId);
         const owner = data[11];
         
@@ -339,39 +417,75 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
       return [];
     }
     
-    // Get cancelled and purchased listings to filter out inactive ones
-    const cancelledTokenIds = new Set<string>();
+    // Create a map to track the most recent event for each token ID
+    // This will help us determine the current state of each token
+    const tokenEventMap = new Map<string, { 
+      event: string, 
+      timestamp: number,
+      seller?: string,
+      price?: string 
+    }>();
+    
+    // Process listing created events
+    if (data.listingCreateds) {
+      data.listingCreateds.forEach((listing: { tokenId: string, blockTimestamp: string, seller: string, price: string }) => {
+        const timestamp = parseInt(listing.blockTimestamp);
+        const currentEvent = tokenEventMap.get(listing.tokenId);
+        
+        // If we don't have an event for this token yet, or this event is more recent
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(listing.tokenId, { 
+            event: 'created', 
+            timestamp,
+            seller: listing.seller,
+            price: listing.price
+          });
+        }
+      });
+    }
+    
+    // Process listing cancelled events
     if (data.listingCancelleds) {
-      data.listingCancelleds.forEach((cancelled: { tokenId: string }) => {
-        cancelledTokenIds.add(cancelled.tokenId);
+      data.listingCancelleds.forEach((cancelled: { tokenId: string, blockTimestamp: string }) => {
+        const timestamp = parseInt(cancelled.blockTimestamp);
+        const currentEvent = tokenEventMap.get(cancelled.tokenId);
+        
+        // If this cancel event is more recent than what we have, update the state
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(cancelled.tokenId, { event: 'cancelled', timestamp });
+        }
       });
-      console.log('Cancelled token IDs:', Array.from(cancelledTokenIds));
-    } else {
-      console.log('No listing cancelled events found');
     }
     
-    const purchasedTokenIds = new Set<string>();
+    // Process listing purchased events
     if (data.listingPurchaseds) {
-      data.listingPurchaseds.forEach((purchased: { tokenId: string }) => {
-        purchasedTokenIds.add(purchased.tokenId);
+      data.listingPurchaseds.forEach((purchased: { tokenId: string, blockTimestamp: string }) => {
+        const timestamp = parseInt(purchased.blockTimestamp);
+        const currentEvent = tokenEventMap.get(purchased.tokenId);
+        
+        // If this purchase event is more recent than what we have, update the state
+        if (!currentEvent || timestamp > currentEvent.timestamp) {
+          tokenEventMap.set(purchased.tokenId, { event: 'purchased', timestamp });
+        }
       });
-      console.log('Purchased token IDs:', Array.from(purchasedTokenIds));
-    } else {
-      console.log('No listing purchased events found');
     }
     
-    // Filter out inactive listings
-    const activeListings = data.listingCreateds.filter((listing: { tokenId: string }) => {
-      const isActive = !cancelledTokenIds.has(listing.tokenId) && !purchasedTokenIds.has(listing.tokenId);
-      if (!isActive) {
-        console.log(`Filtering out inactive listing for token ID ${listing.tokenId}`);
+    // Find tokens that are currently listed (most recent event is 'created')
+    const activeListingTokens: Array<{ tokenId: string, seller: string, price: string }> = [];
+    
+    tokenEventMap.forEach((eventData, tokenId) => {
+      if (eventData.event === 'created' && eventData.seller && eventData.price) {
+        activeListingTokens.push({
+          tokenId,
+          seller: eventData.seller,
+          price: eventData.price
+        });
       }
-      return isActive;
     });
     
-    console.log(`Found ${activeListings.length} active listings out of ${data.listingCreateds.length} total listings`);
+    console.log(`Found ${activeListingTokens.length} active listings out of ${data.listingCreateds.length} total listings`);
     
-    if (activeListings.length === 0) {
+    if (activeListingTokens.length === 0) {
       return [];
     }
     
@@ -381,7 +495,7 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
     
     // Fetch details for each listed token
     const listings: MarketplaceListing[] = [];
-    const listingPromises = activeListings.map(async (listing: { tokenId: string, seller: string, price: string }) => {
+    const listingPromises = activeListingTokens.map(async (listing) => {
       try {
         const tokenId = Number(listing.tokenId);
         const data = await contract.getPokemon(tokenId);
@@ -426,34 +540,78 @@ export const getListingDetails = async (tokenId: number): Promise<DetailedListin
       return null;
     }
     
-    // Get listing history to check if it's still active
+    // Get listing history
     const { data: historyData } = await marketplaceGraphClient.query({
       query: GET_LISTING_HISTORY,
       variables: { tokenId: tokenId.toString() },
     });
     
-    // Check if the listing has been cancelled or purchased
-    const isCancelled = historyData.listingCancelleds && historyData.listingCancelleds.some(
-      (event: { tokenId: string }) => event.tokenId === tokenId.toString()
-    );
+    // Get all events for this token
+    const createEvents = historyData.listingCreateds || [];
+    const cancelEvents = historyData.listingCancelleds || [];
+    const purchaseEvents = historyData.listingPurchaseds || [];
     
-    const isPurchased = historyData.listingPurchaseds && historyData.listingPurchaseds.some(
-      (event: { tokenId: string }) => event.tokenId === tokenId.toString()
-    );
+    // Find the most recent event by timestamp
+    let mostRecentTimestamp = 0;
+    let mostRecentEventType = '';
     
-    // If the listing is not active, return null
-    if (isCancelled || isPurchased) {
+    // Check created events
+    for (const event of createEvents) {
+      const timestamp = parseInt(event.blockTimestamp);
+      if (timestamp > mostRecentTimestamp) {
+        mostRecentTimestamp = timestamp;
+        mostRecentEventType = 'created';
+      }
+    }
+    
+    // Check cancelled events
+    for (const event of cancelEvents) {
+      const timestamp = parseInt(event.blockTimestamp);
+      if (timestamp > mostRecentTimestamp) {
+        mostRecentTimestamp = timestamp;
+        mostRecentEventType = 'cancelled';
+      }
+    }
+    
+    // Check purchased events
+    for (const event of purchaseEvents) {
+      const timestamp = parseInt(event.blockTimestamp);
+      if (timestamp > mostRecentTimestamp) {
+        mostRecentTimestamp = timestamp;
+        mostRecentEventType = 'purchased';
+      }
+    }
+    
+    // If the most recent event is not a 'created' event, the listing is not active
+    if (mostRecentEventType !== 'created') {
+      console.log(`Listing ${tokenId} is not active. Most recent event: ${mostRecentEventType}`);
       return null;
     }
     
-    const listing = listingData.listingCreateds[0];
+    // Find the most recent listing created event
+    let mostRecentListing = null;
+    let mostRecentListingTimestamp = 0;
+    
+    for (const event of createEvents) {
+      const timestamp = parseInt(event.blockTimestamp);
+      if (timestamp > mostRecentListingTimestamp) {
+        mostRecentListingTimestamp = timestamp;
+        mostRecentListing = event;
+      }
+    }
+    
+    if (!mostRecentListing) {
+      return null;
+    }
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
     const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
     
-    // Get Blockmon details
+    // Get Blockmon details directly from the blockchain
     const blockmonData = await contract.getPokemon(tokenId);
+    
+    console.log('Raw blockchain data:', blockmonData);
     
     // Process history data
     const history: HistoryItem[] = [];
@@ -500,64 +658,52 @@ export const getListingDetails = async (tokenId: number): Promise<DetailedListin
     // Sort history by date (newest first)
     history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    // Calculate stats based on attribute and rarity
+    // Get attribute and rarity as raw numbers from the blockchain
     const attribute = Number(blockmonData[1]);
     const rarity = Number(blockmonData[2]);
     const level = Number(blockmonData[3]);
     
-    // Base stats multiplied by level and rarity
-    const rarityMultiplier = [1, 1.2, 1.5, 1.8, 2.2, 2.5][rarity] || 1;
-    const baseStats = {
-      hp: Math.floor(100 * rarityMultiplier * (1 + level * 0.1)),
-      attack: Math.floor(70 * rarityMultiplier * (1 + level * 0.1)),
-      defense: Math.floor(70 * rarityMultiplier * (1 + level * 0.1)),
-      speed: Math.floor(70 * rarityMultiplier * (1 + level * 0.1))
-    };
-    
-    // Adjust stats based on attribute
-    const stats = { ...baseStats };
-    switch (attribute) {
-      case 1: // FIRE
-        stats.attack = Math.floor(stats.attack * 1.2);
-        stats.defense = Math.floor(stats.defense * 0.9);
-        break;
-      case 2: // WATER
-        stats.hp = Math.floor(stats.hp * 1.1);
-        stats.defense = Math.floor(stats.defense * 1.1);
-        break;
-      case 3: // ELECTRIC
-        stats.speed = Math.floor(stats.speed * 1.3);
-        break;
-      case 4: // GRASS
-        stats.hp = Math.floor(stats.hp * 1.2);
-        stats.speed = Math.floor(stats.speed * 0.9);
-        break;
-      // Add more attribute adjustments as needed
-    }
-    
-    // Generate a description based on attributes
+    // Use the raw attribute and rarity values
     const attributeString = getAttributeString(attribute);
     const rarityString = getRarityString(rarity);
-    const description = `A ${rarityString.toLowerCase()} ${attributeString.toLowerCase()}-type Blockmon at level ${level}. ${
-      attribute === 1 ? 'It has exceptional attack capabilities but slightly lower defense.' :
-      attribute === 2 ? 'It has increased health and defense, making it durable in battles.' :
-      attribute === 3 ? 'It is extremely fast, allowing it to strike first in most encounters.' :
-      attribute === 4 ? 'It has high health but moves somewhat slower than other types.' :
-      'It has balanced stats across all categories.'
-    }`;
+    
+    // Use raw stats from the blockchain
+    const stats = {
+      hp: Number(blockmonData[4]),
+      attack: Number(blockmonData[5]),
+      defense: Number(blockmonData[6]),
+      speed: Number(blockmonData[7])
+    };
     
     return {
       id: tokenId,
       name: blockmonData[0],
       image: blockmonData[12] || `/blockmon/${attribute}.png`,
-      price: ethers.formatEther(listing.price),
-      seller: listing.seller,
+      price: mostRecentListing.price ? ethers.formatEther(mostRecentListing.price) : '0',
+      seller: mostRecentListing.seller,
       attribute: attributeString,
       rarity: rarityString,
       level: level,
-      description: description,
+      description: blockmonData[11] || '',
       stats: stats,
-      history: history
+      history: history,
+      rawData: {
+        name: blockmonData[0],
+        attribute: Number(blockmonData[1]),
+        rarity: Number(blockmonData[2]),
+        level: Number(blockmonData[3]),
+        hp: Number(blockmonData[4]),
+        baseDamage: Number(blockmonData[5]),
+        battleCount: Number(blockmonData[6]),
+        battleWins: Number(blockmonData[7]),
+        birthTime: Number(blockmonData[8]),
+        lastBattleTime: Number(blockmonData[9]),
+        claimed: blockmonData[10],
+        owner: blockmonData[11],
+        tokenURI: blockmonData[12],
+        age: Number(blockmonData[13]),
+        experience: Number(blockmonData[14])
+      }
     };
   } catch (error) {
     console.error('Error fetching listing details:', error);
