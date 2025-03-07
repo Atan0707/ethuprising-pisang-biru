@@ -114,15 +114,6 @@ export default function ListingDetailPage() {
     try {
       toast.loading('Processing purchase...');
       
-      // In a real implementation, this would call the contract's purchase function using ethers
-      // For example:
-      // const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
-      // const signer = await provider.getSigner();
-      // const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-      // const tx = await contract.buyNFT(listing.id, { value: ethers.parseEther(listing.price) });
-      // await tx.wait();
-      
-      // For now, we'll just simulate a successful purchase
       setTimeout(() => {
         toast.dismiss();
         toast.success(`Successfully purchased ${listing.name}!`);
