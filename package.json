@@ -13,12 +13,16 @@
     "@reown/appkit": "^1.6.9",
     "@reown/appkit-adapter-ethers": "^1.6.9",
     "@wagmi/core": "^1.4.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "ethers": "^6.13.5",
     "graphql": "^16.10.0",
     "next": "15.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sonner": "^2.0.1",
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7",
     "wagmi": "^1.4.13"
   },
   "devDependencies": {

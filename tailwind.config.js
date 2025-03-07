@@ -7,6 +7,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        retro: ['"Press Start 2P"', 'cursive'],
+        pixel: ['VT323', 'monospace'],
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
@@ -26,6 +30,9 @@ module.exports = {
           '0%': { opacity: 0, transform: 'scale(0.95)' },
           '100%': { opacity: 1, transform: 'scale(1)' },
         },
+      },
+      textShadow: {
+        'glow': '0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor',
       },
     },
   },

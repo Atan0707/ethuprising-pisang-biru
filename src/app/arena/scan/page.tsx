@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { RetroButton } from '@/components/ui/retro-button'
 
 // Define Pokemon interface
 interface Pokemon {
@@ -217,15 +218,15 @@ export default function ScanPage() {
       {showCountdown && (
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center">
           {!showReadyMessage ? (
-            <div className="text-9xl font-bold text-white animate-pulse">
+            <div className="text-9xl font-bold text-white animate-pulse font-retro tracking-wide text-shadow-glow">
               {countdownValue}
             </div>
           ) : (
             <div className="text-center animate-bounce">
-              <div className="text-4xl md:text-6xl font-bold text-white mb-4">
+              <div className="text-4xl md:text-6xl font-bold text-white mb-4 font-retro tracking-wide uppercase">
                 READY FOR THE
               </div>
-              <div className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent">
+              <div className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent font-retro tracking-wide uppercase text-shadow-glow">
                 NEXT BATTLE!
               </div>
             </div>
@@ -263,7 +264,7 @@ export default function ScanPage() {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Arena
+            <span className="font-pixel tracking-wide">Back to Arena</span>
           </Link>
           
           {scanStage > 0 && (
@@ -274,14 +275,16 @@ export default function ScanPage() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Reset
+              <span className="font-pixel tracking-wide">Reset</span>
             </button>
           )}
         </div>
         
         <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10 max-w-4xl mx-auto">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">Arena Battle Scanner</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 text-center font-retro tracking-wide uppercase">
+              Arena Battle Scanner
+            </h2>
             
             {/* Battle Arena */}
             <div className="mb-6">
@@ -306,14 +309,22 @@ export default function ScanPage() {
                           )}
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-white">{firstPokemon?.name}</h3>
-                          <p className="text-blue-300">Lv. {firstPokemon?.level} • {firstPokemon?.type}</p>
-                          <p className="text-xs text-gray-300 mt-1">Owner: {firstPokemon?.owner}</p>
+                          <h3 className="text-xl font-bold text-white font-retro tracking-wide uppercase">
+                            {firstPokemon?.name}
+                          </h3>
+                          <p className="text-blue-300 font-pixel tracking-wide">
+                            Lv. {firstPokemon?.level} • {firstPokemon?.type}
+                          </p>
+                          <p className="text-xs text-gray-300 mt-1 font-pixel tracking-wide">
+                            Owner: {firstPokemon?.owner}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="mb-1">
-                          <span className="text-white font-medium">{firstPokemon?.hp}/{firstPokemon?.maxHp} HP</span>
+                          <span className="text-white font-medium font-pixel tracking-wide">
+                            {firstPokemon?.hp}/{firstPokemon?.maxHp} HP
+                          </span>
                         </div>
                         <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
                           <div 
@@ -327,13 +338,14 @@ export default function ScanPage() {
                     {battleStarted && currentTurn === 1 && firstPokemon && (
                       <div className="mt-4 grid grid-cols-2 gap-2">
                         {firstPokemon.moves.map((move: string, index: number) => (
-                          <button 
+                          <RetroButton 
                             key={index}
                             onClick={() => executeMove(index)}
-                            className="py-2 px-3 bg-blue-600/50 hover:bg-blue-500/60 text-white rounded border border-blue-400/30 text-sm font-medium"
+                            variant="blue"
+                            className="text-xs"
                           >
                             {move}
-                          </button>
+                          </RetroButton>
                         ))}
                       </div>
                     )}
@@ -341,8 +353,12 @@ export default function ScanPage() {
                 ) : (
                   <div className="bg-gray-800/40 rounded-lg p-6 border border-gray-700/50 flex flex-col items-center justify-center">
                     <div className="text-center mb-4">
-                      <p className="text-white text-lg mb-1">First Player</p>
-                      <p className="text-gray-400 text-sm">Waiting for scan...</p>
+                      <p className="text-white text-lg mb-1 font-retro tracking-wide uppercase">
+                        First Player
+                      </p>
+                      <p className="text-gray-400 text-sm font-pixel tracking-wide">
+                        Waiting for scan...
+                      </p>
                     </div>
                   </div>
                 )}
@@ -351,7 +367,7 @@ export default function ScanPage() {
               {/* VS Divider */}
               <div className="flex items-center justify-center mb-8">
                 <div className="w-1/3 h-px bg-white/20"></div>
-                <div className="mx-4 text-white font-bold text-xl">VS</div>
+                <div className="mx-4 text-white font-bold text-xl font-retro tracking-wide text-shadow-glow">VS</div>
                 <div className="w-1/3 h-px bg-white/20"></div>
               </div>
               
@@ -376,14 +392,22 @@ export default function ScanPage() {
                           )}
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-white">{secondPokemon?.name}</h3>
-                          <p className="text-red-300">Lv. {secondPokemon?.level} • {secondPokemon?.type}</p>
-                          <p className="text-xs text-gray-300 mt-1">Owner: {secondPokemon?.owner}</p>
+                          <h3 className="text-xl font-bold text-white font-retro tracking-wide uppercase">
+                            {secondPokemon?.name}
+                          </h3>
+                          <p className="text-red-300 font-pixel tracking-wide">
+                            Lv. {secondPokemon?.level} • {secondPokemon?.type}
+                          </p>
+                          <p className="text-xs text-gray-300 mt-1 font-pixel tracking-wide">
+                            Owner: {secondPokemon?.owner}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="mb-1">
-                          <span className="text-white font-medium">{secondPokemon?.hp}/{secondPokemon?.maxHp} HP</span>
+                          <span className="text-white font-medium font-pixel tracking-wide">
+                            {secondPokemon?.hp}/{secondPokemon?.maxHp} HP
+                          </span>
                         </div>
                         <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
                           <div 
@@ -397,13 +421,14 @@ export default function ScanPage() {
                     {battleStarted && currentTurn === 2 && secondPokemon && (
                       <div className="mt-4 grid grid-cols-2 gap-2">
                         {secondPokemon.moves.map((move: string, index: number) => (
-                          <button 
+                          <RetroButton 
                             key={index}
                             onClick={() => executeMove(index)}
-                            className="py-2 px-3 bg-red-600/50 hover:bg-red-500/60 text-white rounded border border-red-400/30 text-sm font-medium"
+                            variant="default"
+                            className="text-xs"
                           >
                             {move}
-                          </button>
+                          </RetroButton>
                         ))}
                       </div>
                     )}
@@ -411,8 +436,12 @@ export default function ScanPage() {
                 ) : (
                   <div className="bg-gray-800/40 rounded-lg p-6 border border-gray-700/50 flex flex-col items-center justify-center">
                     <div className="text-center mb-4">
-                      <p className="text-white text-lg mb-1">Second Player</p>
-                      <p className="text-gray-400 text-sm">Waiting for scan...</p>
+                      <p className="text-white text-lg mb-1 font-retro tracking-wide uppercase">
+                        Second Player
+                      </p>
+                      <p className="text-gray-400 text-sm font-pixel tracking-wide">
+                        Waiting for scan...
+                      </p>
                     </div>
                   </div>
                 )}
@@ -421,13 +450,15 @@ export default function ScanPage() {
               {/* Battle Log */}
               {battleLog.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-white font-medium mb-2">Battle Log</h3>
+                  <h3 className="text-white font-medium mb-2 font-retro tracking-wide uppercase">
+                    Battle Log
+                  </h3>
                   <div 
                     id="battle-log"
                     className="bg-black/30 border border-gray-700/50 rounded-lg p-3 h-32 overflow-y-auto text-sm"
                   >
                     {battleLog.map((log, index) => (
-                      <div key={index} className="mb-1 text-gray-300">
+                      <div key={index} className="mb-1 text-gray-300 font-pixel tracking-wide">
                         {log}
                       </div>
                     ))}
@@ -438,30 +469,30 @@ export default function ScanPage() {
               {/* Action Buttons */}
               <div className="flex justify-center">
                 {scanStage < 2 ? (
-                  <button
+                  <RetroButton
                     onClick={handleScan}
                     disabled={isScanning}
-                    className={`w-full max-w-md py-3 rounded-lg font-medium transition-all ${
-                      isScanning 
-                        ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
-                        : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'
-                    }`}
+                    variant="blue"
+                    size="full"
+                    className="w-full max-w-md"
                   >
                     {isScanning ? 'Scanning...' : scanStage === 0 ? 'Scan First Blocknogotchi' : 'Scan Second Blocknogotchi'}
-                  </button>
+                  </RetroButton>
                 ) : !battleStarted ? (
-                  <button
+                  <RetroButton
                     onClick={startBattle}
-                    className="w-full max-w-md py-3 rounded-lg font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all"
+                    variant="default"
+                    size="full"
+                    className="w-full max-w-md"
                   >
                     Start Battle
-                  </button>
+                  </RetroButton>
                 ) : (
                   <div className="text-center w-full">
-                    <p className="text-white mb-2">
+                    <p className="text-white mb-2 font-retro tracking-wide uppercase text-shadow-glow">
                       {currentTurn === 1 && firstPokemon ? firstPokemon.name : secondPokemon?.name}&apos;s turn to attack!
                     </p>
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-gray-300 font-pixel tracking-wide">
                       Select a move above to attack
                     </p>
                   </div>
