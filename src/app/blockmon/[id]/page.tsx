@@ -7,6 +7,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ethers } from 'ethers';
 import BlockmonABI from '@/contract/Blockmon.json';
+import { toast } from 'sonner';
+import { useAppKitAccount } from '@reown/appkit/react';
 
 // GraphQL query to get Blockmon battle data
 const GET_BLOCKMON_BATTLES = gql`
@@ -113,7 +115,12 @@ export default function BlockmonDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'stats' | 'battles' | 'levels'>('stats');
-
+  const [nfcWriting, setNfcWriting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // Get current user's wallet address
+  const { address: currentUserAddress, isConnected } = useAppKitAccount();
+  
   const { data: battleData } = useQuery(GET_BLOCKMON_BATTLES, {
     variables: { tokenId },
     skip: !tokenId
@@ -139,7 +146,7 @@ export default function BlockmonDetailsPage() {
         const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
         
         // Contract address from the-graph/networks.json
-        const contractAddress = '0xe1e52a36E15eBf6785842e55b6d1D901819985ec';
+        const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
         
         // Create contract instance
         const contract = new ethers.Contract(contractAddress, BlockmonABI.abi, provider);
@@ -177,6 +184,55 @@ export default function BlockmonDetailsPage() {
       fetchBlockmonData();
     }
   }, [tokenId]);
+
+  // Ensure component is mounted to avoid hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Check if current user is the owner of the Blockmon
+  const isOwner = mounted && isConnected && currentUserAddress && 
+    blockmonData?.owner && 
+    currentUserAddress.toLowerCase() === blockmonData.owner.toLowerCase();
+
+  // Function to handle writing to NFC
+  const handleWriteToNFC = async () => {
+    if (!tokenId) return;
+    
+    try {
+      setNfcWriting(true);
+      
+      // Check if Web NFC API is available
+      if (!('NDEFReader' in window)) {
+        toast.error('NFC is not supported on this device or browser');
+        setNfcWriting(false);
+        return;
+      }
+      
+      toast.promise(
+        (async () => {
+          // @ts-expect-error - NDEFReader might not be recognized by TypeScript
+          const ndef = new window.NDEFReader();
+          await ndef.write({
+            records: [
+              { recordType: "text", data: `blockmon-id:${tokenId}` }
+            ]
+          });
+          return true;
+        })(),
+        {
+          loading: 'Tap your NFC card to write Blockmon data...',
+          success: 'Successfully wrote Blockmon data to NFC card!',
+          error: 'Failed to write to NFC card. Please try again.'
+        }
+      );
+    } catch (error) {
+      console.error('Error writing to NFC:', error);
+      toast.error('Failed to write to NFC card. Please try again.');
+    } finally {
+      setNfcWriting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -236,49 +292,77 @@ export default function BlockmonDetailsPage() {
         {/* Header with image and basic info */}
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-75"></div>
-          <div className="relative p-8 flex flex-col md:flex-row items-center">
-            {blockmonData.tokenURI ? (
-              <div className="w-48 h-48 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center mb-4 md:mb-0 md:mr-8">
-                <Image 
-                  src={blockmonData.tokenURI} 
-                  alt={blockmonData.name} 
-                  width={180} 
-                  height={180}
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-48 h-48 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center mb-4 md:mb-0 md:mr-8">
-                <span className="text-6xl">{attribute.icon}</span>
-              </div>
-            )}
-            
-            <div className="text-center md:text-left text-white">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${attribute.bgColor} ${attribute.color}`}>
-                  {attribute.icon} {attribute.name}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${rarity.bgColor} ${rarity.color}`}>
-                  {rarity.name}
-                </span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold">{blockmonData.name}</h1>
-              <p className="text-xl opacity-90">#{tokenId}</p>
-              <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">Lvl {blockmonData.level}</div>
-                  <div className="text-xs uppercase tracking-wide opacity-75">Level</div>
+          <div className="relative p-8 flex flex-col md:flex-row items-center justify-between">
+            <div className="flex flex-col md:flex-row items-center">
+              {blockmonData.tokenURI ? (
+                <div className="w-48 h-48 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center mb-4 md:mb-0 md:mr-8">
+                  <Image 
+                    src={blockmonData.tokenURI} 
+                    alt={blockmonData.name} 
+                    width={180} 
+                    height={180}
+                    className="object-cover"
+                  />
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{blockmonData.battleCount}</div>
-                  <div className="text-xs uppercase tracking-wide opacity-75">Battles</div>
+              ) : (
+                <div className="w-48 h-48 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center mb-4 md:mb-0 md:mr-8">
+                  <span className="text-6xl">{attribute.icon}</span>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{winRate}%</div>
-                  <div className="text-xs uppercase tracking-wide opacity-75">Win Rate</div>
+              )}
+              
+              <div className="text-center md:text-left text-white">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${attribute.bgColor} ${attribute.color}`}>
+                    {attribute.icon} {attribute.name}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${rarity.bgColor} ${rarity.color}`}>
+                    {rarity.name}
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold">{blockmonData.name}</h1>
+                <p className="text-xl opacity-90">#{tokenId}</p>
+                <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">Lvl {blockmonData.level}</div>
+                    <div className="text-xs uppercase tracking-wide opacity-75">Level</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{blockmonData.battleCount}</div>
+                    <div className="text-xs uppercase tracking-wide opacity-75">Battles</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{winRate}%</div>
+                    <div className="text-xs uppercase tracking-wide opacity-75">Win Rate</div>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            {/* NFC Write Button - Only show if current user is the owner */}
+            {isOwner && (
+              <button
+                onClick={handleWriteToNFC}
+                disabled={nfcWriting}
+                className="mt-4 md:mt-0 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+              >
+                {nfcWriting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Writing...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Write to NFC
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
