@@ -5,39 +5,12 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
-
-// Define a type for the listing history items
-interface HistoryItem {
-  event: string;
-  date: string;
-  by?: string;
-  against?: string;
-  price?: string;
-}
-
-// Define a type for the listing
-interface Listing {
-  id: number;
-  name: string;
-  image: string;
-  price: string;
-  seller: string;
-  attribute: string;
-  rarity: string;
-  level: number;
-  description: string;
-  stats: {
-    hp: number;
-    attack: number;
-    defense: number;
-    speed: number;
-  };
-  history: HistoryItem[];
-}
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import { getListingDetails, purchaseNFT, DetailedListing } from '@/app/utils/marketplace';
+import { Eip1193Provider } from 'ethers';
 
 export default function ListingDetailPage() {
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<DetailedListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -47,7 +20,8 @@ export default function ListingDetailPage() {
   
   // Use reown wallet integration
   const { open } = useAppKit();
-  const { address, isConnected } = useAppKitAccount();
+  const { isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
@@ -65,14 +39,13 @@ export default function ListingDetailPage() {
       }
       
       try {
-        // Fetch listing data from API
-        const response = await fetch(`/api/listings/${listingId}`);
+        // Fetch listing data from blockchain/subgraph
+        const data = await getListingDetails(parseInt(listingId));
         
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
+        if (!data) {
+          throw new Error('Listing not found');
         }
         
-        const data = await response.json();
         setListing(data);
         setIsLoading(false);
       } catch (error) {
@@ -99,7 +72,7 @@ export default function ListingDetailPage() {
 
   // Function to handle buying an NFT
   const handleBuyNFT = async () => {
-    if (!isConnected) {
+    if (!isConnected || !walletProvider) {
       toast.error('Please connect your wallet first');
       return;
     }
@@ -114,7 +87,10 @@ export default function ListingDetailPage() {
     try {
       toast.loading('Processing purchase...');
       
-      setTimeout(() => {
+      // Call the real purchase function
+      const success = await purchaseNFT(listing.id, listing.price, walletProvider as Eip1193Provider);
+      
+      if (success) {
         toast.dismiss();
         toast.success(`Successfully purchased ${listing.name}!`);
         
@@ -122,13 +98,20 @@ export default function ListingDetailPage() {
         setTimeout(() => {
           router.push(`/blockmon/${listing.id}`);
         }, 1500);
-      }, 2000);
+      } else {
+        setIsPurchasing(false);
+      }
     } catch (error) {
       console.error('Error purchasing NFT:', error);
       toast.dismiss();
       toast.error('Failed to purchase NFT');
       setIsPurchasing(false);
     }
+  };
+
+  // Format address for display
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   // Render loading state
@@ -187,9 +170,9 @@ export default function ListingDetailPage() {
               <Image
                 src={listing.image}
                 alt={listing.name}
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg"
+                width={500}
+                height={500}
+                className="rounded-lg w-full h-full object-cover"
               />
               <div className="absolute top-4 right-4 bg-blue-600 text-white text-sm font-bold px-3 py-1 rounded-full">
                 Lvl {listing.level}
@@ -259,72 +242,68 @@ export default function ListingDetailPage() {
                   <Image
                     src="/eth-logo.svg"
                     alt="ETH"
-                    width={20}
-                    height={20}
+                    width={24}
+                    height={24}
                     className="mr-2"
                   />
                   <span className="text-2xl font-bold text-gray-900 dark:text-white">{listing.price} ETH</span>
                 </div>
-                
-                {!isConnected ? (
-                  <button
-                    onClick={handleConnectWallet}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Connect Wallet
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleBuyNFT}
-                    disabled={isPurchasing}
-                    className={`bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors ${
-                      isPurchasing ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {isPurchasing ? 'Processing...' : 'Buy Now'}
-                  </button>
-                )}
+                <div>
+                  {!isConnected ? (
+                    <button
+                      onClick={handleConnectWallet}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    >
+                      Connect Wallet
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleBuyNFT}
+                      disabled={isPurchasing}
+                      className={`${
+                        isPurchasing
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white font-medium py-2 px-4 rounded-lg transition-colors`}
+                    >
+                      {isPurchasing ? 'Processing...' : 'Buy Now'}
+                    </button>
+                  )}
+                </div>
               </div>
               
-              <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Seller: {listing.seller}
-                {isConnected && address && address.toLowerCase() === listing.seller.toLowerCase() && (
-                  <span className="ml-2 text-green-500">(You)</span>
-                )}
+              <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                Seller: {formatAddress(listing.seller)}
               </div>
             </div>
           </div>
           
-          <div className="border-t border-gray-200 dark:border-gray-700 p-6">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Transaction History</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Event
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Details
-                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Event</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">From</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">To</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {listing.history.map((item, index) => (
                     <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {item.event}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{item.event}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {item.by ? formatAddress(item.by) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {item.date}
+                        {item.against ? formatAddress(item.against) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {item.by && `By: ${item.by}`}
-                        {item.against && `Against: ${item.against}`}
-                        {item.price && `Price: ${item.price}`}
+                        {item.price || '-'}
                       </td>
                     </tr>
                   ))}

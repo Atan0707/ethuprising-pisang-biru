@@ -4,45 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { toast } from 'sonner';
-
-// Mock data for initial development - will be replaced with actual contract calls
-const MOCK_LISTINGS = [
-  {
-    id: 1,
-    name: 'Fire Blockmon',
-    image: '/blockmon/fire.jpg',
-    price: '0.05',
-    seller: '0x1234...5678',
-    attribute: 'FIRE',
-    rarity: 'RARE',
-    level: 5
-  },
-  {
-    id: 2,
-    name: 'Water Blockmon',
-    image: '/blockmon/water.jpg',
-    price: '0.08',
-    seller: '0x8765...4321',
-    attribute: 'WATER',
-    rarity: 'UNCOMMON',
-    level: 3
-  },
-  {
-    id: 3,
-    name: 'Plant Blockmon',
-    image: '/blockmon/plant.jpg',
-    price: '0.12',
-    seller: '0x5678...1234',
-    attribute: 'PLANT',
-    rarity: 'EPIC',
-    level: 7
-  }
-];
+import { getActiveListings, purchaseNFT, MarketplaceListing, getAttributeString, getRarityString } from '@/app/utils/marketplace';
+import { Eip1193Provider } from 'ethers';
 
 export default function MarketplacePage() {
-  const [listings, setListings] = useState(MOCK_LISTINGS);
+  const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -50,21 +18,37 @@ export default function MarketplacePage() {
   // Use reown wallet integration
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
-    
-    // Simulate loading data from blockchain
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
   }, []);
 
+  // Fetch listings from the blockchain
+  useEffect(() => {
+    const fetchListings = async () => {
+      if (!mounted) return;
+      
+      setIsLoading(true);
+      try {
+        const activeListings = await getActiveListings();
+        console.log('Active listings:', activeListings);
+        setListings(activeListings);
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        toast.error('Failed to load marketplace listings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [mounted]);
+
   // Function to handle buying an NFT
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleBuyNFT = async (id: number, price: string) => {
-    if (!isConnected) {
+    if (!isConnected || !walletProvider) {
       toast.error('Please connect your wallet first');
       return;
     }
@@ -72,14 +56,21 @@ export default function MarketplacePage() {
     try {
       toast.loading('Processing purchase...');
       
-      // For now, we'll just simulate a successful purchase
-      setTimeout(() => {
+      // Call the real purchase function
+      const success = await purchaseNFT(id, price, walletProvider as Eip1193Provider);
+      
+      if (success) {
         toast.dismiss();
         toast.success(`Successfully purchased Blockmon #${id}!`);
         
         // Remove the purchased listing from the display
         setListings(listings.filter(listing => listing.id !== id));
-      }, 2000);
+        
+        // Redirect to blockmon page after a short delay
+        setTimeout(() => {
+          router.push(`/blockmon/${id}`);
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error purchasing NFT:', error);
       toast.dismiss();
@@ -183,9 +174,9 @@ export default function MarketplacePage() {
                   <Image
                     src={listing.image}
                     alt={listing.name}
-                    layout="fill"
-                    objectFit="cover"
-                    className="rounded-t-lg"
+                    width={300}
+                    height={200}
+                    className="rounded-t-lg w-full h-full object-cover"
                   />
                   <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
                     Lvl {listing.level}
@@ -195,11 +186,11 @@ export default function MarketplacePage() {
                   <div className="flex justify-between items-start">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{listing.name}</h3>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {listing.attribute}
+                      {getAttributeString(listing.attribute)}
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Rarity: <span className="font-medium">{listing.rarity}</span>
+                    Rarity: <span className="font-medium">{getRarityString(listing.rarity)}</span>
                   </p>
                   <div className="mt-4 flex justify-between items-center">
                     <div className="flex items-center">
@@ -220,7 +211,7 @@ export default function MarketplacePage() {
                     </button>
                   </div>
                   <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Seller: {listing.seller}
+                    Seller: {formatAddress(listing.seller)}
                   </div>
                 </div>
                 <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700">

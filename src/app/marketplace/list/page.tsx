@@ -39,6 +39,7 @@ export default function ListNFTPage() {
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedNFT, setScannedNFT] = useState<number | null>(null);
+  const requireNfcVerification = false;
   const router = useRouter();
   
   // Use reown wallet integration
@@ -191,8 +192,8 @@ export default function ListNFTPage() {
       return;
     }
     
-    // Check if the selected NFT has been verified with NFC
-    if (scannedNFT !== selectedNFT) {
+    // Check if the selected NFT has been verified with NFC, only if verification is required
+    if (requireNfcVerification && scannedNFT !== selectedNFT) {
       toast.error('Ownership Verification Required', {
         description: 'Please scan your NFC card to verify ownership before listing.',
         icon: '🔒',
@@ -256,7 +257,7 @@ export default function ListNFTPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">List Your Blockmon</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Select a Blockmon from your collection, verify ownership with your NFC card, and list it on the marketplace
+            Select a Blockmon from your collection{requireNfcVerification ? ', verify ownership with your NFC card,' : ''} and list it on the marketplace
           </p>
         </div>
 
@@ -336,7 +337,7 @@ export default function ListNFTPage() {
                 ))}
               </div>
 
-              {selectedNFT && scannedNFT !== selectedNFT && (
+              {selectedNFT && requireNfcVerification && scannedNFT !== selectedNFT && (
                 <div className="mt-8">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Step 2: Verify ownership with NFC card
@@ -391,10 +392,10 @@ export default function ListNFTPage() {
                 </div>
               )}
 
-              {selectedNFT && scannedNFT === selectedNFT && (
+              {selectedNFT && (!requireNfcVerification || scannedNFT === selectedNFT) && (
                 <form onSubmit={handleSubmitListing} className="mt-8">
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Step 3: Set your price
+                    Step {requireNfcVerification ? '3' : '2'}: Set your price
                   </h2>
                   
                   <div className="flex flex-col sm:flex-row gap-4">
