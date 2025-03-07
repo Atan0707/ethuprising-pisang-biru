@@ -35,6 +35,19 @@ const GET_BLOCKMON_LEVELS = gql`
   }
 `;
 
+// GraphQL query to get Blockmon creation data
+const GET_BLOCKMON_CREATED = gql`
+  query GetBlockmonCreated($tokenId: String!) {
+    pokemonCreateds(where: {tokenId: $tokenId}, first: 1) {
+      id
+      tokenId
+      owner
+      blockTimestamp
+      transactionHash
+    }
+  }
+`;
+
 // Enum mapping for attributes
 const attributeMap = [
   { name: 'Fire', color: 'text-red-500', bgColor: 'bg-red-100', icon: '🔥' },
@@ -107,6 +120,12 @@ export default function BlockmonDetailsPage() {
   });
 
   const { data: levelData } = useQuery(GET_BLOCKMON_LEVELS, {
+    variables: { tokenId },
+    skip: !tokenId
+  });
+  
+  // We're not using this data directly, but keeping the query for future reference
+  useQuery(GET_BLOCKMON_CREATED, {
     variables: { tokenId },
     skip: !tokenId
   });
@@ -371,9 +390,9 @@ export default function BlockmonDetailsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Owner</span>
-                    <span className="font-medium text-gray-800 dark:text-white truncate max-w-[200px]">
+                    <Link href={`/owner/${blockmonData.owner}`} className="font-medium text-blue-500 hover:text-blue-700 truncate max-w-[200px]">
                       {blockmonData.owner}
-                    </span>
+                    </Link>
                   </div>
                 </div>
               </div>
