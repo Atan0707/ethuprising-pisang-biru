@@ -60,6 +60,26 @@ const GET_MARKETPLACE_LISTINGS = gql`
       price
       blockTimestamp
     }
+    listingPurchaseds(
+      orderBy: blockTimestamp
+      orderDirection: desc
+    ) {
+      id
+      tokenId
+      seller
+      buyer
+      price
+      blockTimestamp
+    }
+    listingCancelleds(
+      orderBy: blockTimestamp
+      orderDirection: desc
+    ) {
+      id
+      tokenId
+      seller
+      blockTimestamp
+    }
   }
 `;
 
@@ -312,6 +332,7 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
     // Query The Graph for listings
     const { data } = await marketplaceGraphClient.query({
       query: GET_MARKETPLACE_LISTINGS,
+      fetchPolicy: 'network-only',
     });
     
     if (!data.listingCreateds || data.listingCreateds.length === 0) {
@@ -324,6 +345,9 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
       data.listingCancelleds.forEach((cancelled: { tokenId: string }) => {
         cancelledTokenIds.add(cancelled.tokenId);
       });
+      console.log('Cancelled token IDs:', Array.from(cancelledTokenIds));
+    } else {
+      console.log('No listing cancelled events found');
     }
     
     const purchasedTokenIds = new Set<string>();
@@ -331,12 +355,21 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
       data.listingPurchaseds.forEach((purchased: { tokenId: string }) => {
         purchasedTokenIds.add(purchased.tokenId);
       });
+      console.log('Purchased token IDs:', Array.from(purchasedTokenIds));
+    } else {
+      console.log('No listing purchased events found');
     }
     
     // Filter out inactive listings
     const activeListings = data.listingCreateds.filter((listing: { tokenId: string }) => {
-      return !cancelledTokenIds.has(listing.tokenId) && !purchasedTokenIds.has(listing.tokenId);
+      const isActive = !cancelledTokenIds.has(listing.tokenId) && !purchasedTokenIds.has(listing.tokenId);
+      if (!isActive) {
+        console.log(`Filtering out inactive listing for token ID ${listing.tokenId}`);
+      }
+      return isActive;
     });
+    
+    console.log(`Found ${activeListings.length} active listings out of ${data.listingCreateds.length} total listings`);
     
     if (activeListings.length === 0) {
       return [];

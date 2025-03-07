@@ -44,6 +44,12 @@ export default function MarketplacePage() {
     };
 
     fetchListings();
+
+    // Set up a refresh interval to periodically update listings
+    const refreshInterval = setInterval(fetchListings, 30000); // Refresh every 30 seconds
+
+    // Clean up the interval when the component unmounts
+    return () => clearInterval(refreshInterval);
   }, [mounted]);
 
   // Function to handle buying an NFT

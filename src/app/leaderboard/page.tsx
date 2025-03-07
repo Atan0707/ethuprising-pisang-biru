@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, gql } from '@apollo/client';
 import LeaderboardByLevel from '@/app/components/leaderboard/LeaderboardByLevel';
 import LeaderboardByBattles from '@/app/components/leaderboard/LeaderboardByBattles';
+import LeaderboardByCollectors from '@/app/components/leaderboard/LeaderboardByCollectors';
 
 // Query to get summary statistics
 const GET_SUMMARY_STATS = gql`
@@ -32,7 +33,7 @@ interface Battle {
 }
 
 export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState<'level' | 'battles'>('level');
+  const [activeTab, setActiveTab] = useState<'level' | 'battles' | 'collectors'>('level');
   const { loading, data } = useQuery(GET_SUMMARY_STATS);
 
   // Calculate summary stats
@@ -80,10 +81,10 @@ export default function LeaderboardPage() {
         <div className="inline-flex rounded-md shadow-sm" role="group">
           <button
             type="button"
-            className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
+            className={`px-4 py-2 text-sm font-medium ${
               activeTab === 'level'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+                ? 'bg-blue-600 text-white rounded-l-lg'
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 rounded-l-lg'
             }`}
             onClick={() => setActiveTab('level')}
           >
@@ -91,7 +92,7 @@ export default function LeaderboardPage() {
           </button>
           <button
             type="button"
-            className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
+            className={`px-4 py-2 text-sm font-medium ${
               activeTab === 'battles'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
@@ -99,6 +100,17 @@ export default function LeaderboardPage() {
             onClick={() => setActiveTab('battles')}
           >
             By Battles
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 text-sm font-medium ${
+              activeTab === 'collectors'
+                ? 'bg-blue-600 text-white rounded-r-lg'
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 rounded-r-lg'
+            }`}
+            onClick={() => setActiveTab('collectors')}
+          >
+            Top Collectors
           </button>
         </div>
       </div>
@@ -111,8 +123,10 @@ export default function LeaderboardPage() {
         ) : (
           activeTab === 'level' ? (
             <LeaderboardByLevel />
-          ) : (
+          ) : activeTab === 'battles' ? (
             <LeaderboardByBattles />
+          ) : (
+            <LeaderboardByCollectors />
           )
         )}
       </div>
