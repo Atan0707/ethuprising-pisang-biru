@@ -93,6 +93,9 @@ export default function Navbar() {
               <Link href="/arena" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
                 Arena
               </Link>
+              <Link href="/marketplace" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                Marketplace
+              </Link>
               <Link href="/leaderboard" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
                 Leaderboard
               </Link>
@@ -176,6 +179,9 @@ export default function Navbar() {
             </Link>
             <Link href="/arena/scan" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
               Arena
+            </Link>
+            <Link href="/marketplace" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+              Marketplace
             </Link>
             <Link href="/leaderboard" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
               Leaderboard
