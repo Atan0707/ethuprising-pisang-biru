@@ -12,7 +12,7 @@ const projectId = "b5afe545e87787c53896449028cc2ad7";
 const metadata = {
   name: "Blocknogotchi",
   description: "Blocknogotchi web application",
-  url: "https://5cb83tf0-3000.asse.devtunnels.ms/", // origin must match your domain & subdomain
+  url: "https://blockmon.vercel.app/", // origin must match your domain & subdomain
   icons: ["https://avatars.mywebsite.com/"],
 };
 
