@@ -228,9 +228,23 @@ export default function ScanPage() {
     try {
       const battleData = {
         code,
-        deviceA: firstPokemon.id.toString(),
-        deviceB: secondPokemon.id.toString(),
+        deviceA: {
+          tokenId: firstPokemon.id.toString(),
+          joined: false,
+          gesture: "",
+          score: 0,
+          ready: false,
+        },
+        deviceB: {
+          tokenId: secondPokemon.id.toString(),
+          joined: false,
+          gesture: "",
+          score: 0,
+          ready: false,
+        },
       };
+
+      console.log("Saving battle data:", battleData); // Add this for debugging
 
       const response = await fetch("/api/battle/save", {
         method: "POST",

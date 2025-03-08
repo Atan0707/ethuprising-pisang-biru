@@ -1,14 +1,14 @@
 {
-  "code": "123123",
+  "code": "G4KGYB",
   "deviceA": {
-    "tokenId": "9",
+    "tokenId": "12",
     "joined": true,
-    "gesture": "paper",
+    "gesture": "rock",
     "score": 0,
     "ready": false
   },
   "deviceB": {
-    "tokenId": "10",
+    "tokenId": "13",
     "joined": true,
     "gesture": "paper",
     "score": 0,

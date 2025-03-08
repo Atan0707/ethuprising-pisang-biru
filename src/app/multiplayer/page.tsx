@@ -7,14 +7,12 @@ import "@tensorflow/tfjs-backend-webgl";
 import { useSearchParams } from "next/navigation";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { Eip1193Provider, ethers } from "ethers";
-import Blockmon from "@/contract/Blockmon.json";
+import Blockmon from "@/contract/BlockmonV2.json";
 import Image from "next/image";
 import { toast } from "sonner";
 
 // Contract address
-const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0xe1e52a36E15eBf6785842e55b6d1D901819985ec";
+const CONTRACT_ADDRESS = "0x577B2aE96f4719bD64cE51f762AECF91126081D3";
 
 // Define Pokemon interface
 interface Pokemon {
