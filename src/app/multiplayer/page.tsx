@@ -227,7 +227,11 @@ function MultiplayerGame() {
         walletProvider as Eip1193Provider
       );
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, Blockmon, signer);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        Blockmon.abi,
+        signer
+      );
 
       const pokemonData = await contract.getPokemon(deviceData.tokenId);
 
@@ -298,7 +302,7 @@ function MultiplayerGame() {
         const signer = await provider.getSigner();
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
-          Blockmon,
+          Blockmon.abi,
           signer
         );
 
@@ -665,7 +669,11 @@ function MultiplayerGame() {
         walletProvider as Eip1193Provider
       );
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, Blockmon, signer);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        Blockmon.abi,
+        signer
+      );
 
       // Get opponent's token ID from battle data
       const response = await fetch("/battle.json");

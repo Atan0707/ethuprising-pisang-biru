@@ -8,7 +8,7 @@ import MintCard from "../components/mint/MintCard";
 import Blockmon from "@/contract/Blockmon.json";
 
 // Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blockmon;
+const CONTRACT_ABI = Blockmon.abi;
 
 // Contract address
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";

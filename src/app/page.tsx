@@ -3,7 +3,24 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen pt-20 pb-10">
+    <div className="min-h-screen pt-20 pb-10 relative">
+      {/* Background image - positioned to respect navbar */}
+      <div 
+        className="fixed inset-0 top-16 -z-10" 
+        style={{
+          backgroundImage: "url('/images/back.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* Gradient overlay */}
+       
+        
+        {/* Pattern overlay */}
+        
+      </div>
+      
       <div className="max-w-4xl mx-auto px-4">
         <main className="flex flex-col items-center justify-center gap-12 px-6 text-center lg:gap-16 py-16">
           <div className="flex flex-col gap-4 lg:gap-6">
@@ -15,7 +32,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <a
+            <Link
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
               href="/mint"
             >
@@ -26,8 +43,8 @@ export default function Home() {
                 height={24}
               />
               Mint a Blocknogotchi
-            </a>
-            <a
+            </Link>
+            <Link
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
               href="/claim"
             >
@@ -38,7 +55,14 @@ export default function Home() {
                 height={24}
               />
               Claim with NFC
-            </a>
+            </Link>
+            <Link
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
+              href="/marketplace"
+            >
+              <Image src="/marketplace.svg" alt="Marketplace" width={24} height={24} />
+              Trade Blockmon
+            </Link>
           </div>
 
           <div className="mt-12 bg-white/80 dark:bg-gray-800/80 rounded-xl p-8 shadow-xl backdrop-blur-sm w-full max-w-2xl">
@@ -68,6 +92,10 @@ export default function Home() {
                 <p className="text-sm">
                   Feed, play, and interact with your pet to keep it happy
                 </p>
+              </div>
+              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-4 rounded-lg">
+                <h3 className="font-bold mb-2">Trade</h3>
+                <p className="text-sm">Buy and sell Blockmon in the marketplace</p>
               </div>
             </div>
           </div>

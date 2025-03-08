@@ -14,6 +14,11 @@ const GET_BATTLE_DATA = gql`
       won
       blockTimestamp
     }
+    pokemonCreateds(first: 1000) {
+      id
+      tokenId
+      blockTimestamp
+    }
   }
 `;
 
@@ -22,6 +27,12 @@ interface BattleData {
   tokenId: string;
   opponentId: string;
   won: boolean;
+  blockTimestamp: string;
+}
+
+interface PokemonCreated {
+  id: string;
+  tokenId: string;
   blockTimestamp: string;
 }
 
@@ -53,6 +64,20 @@ export default function LeaderboardByBattles() {
 
   // Process battle data to get stats per Pokemon
   const battleStats: Record<string, PokemonBattleStats> = {};
+  
+  // First, add all created Pokemon with 0 battles
+  if (data?.pokemonCreateds) {
+    data.pokemonCreateds.forEach((pokemon: PokemonCreated) => {
+      if (!battleStats[pokemon.tokenId]) {
+        battleStats[pokemon.tokenId] = {
+          tokenId: pokemon.tokenId,
+          totalBattles: 0,
+          wins: 0,
+          lastBattle: pokemon.blockTimestamp
+        };
+      }
+    });
+  }
   
   if (data?.battleCompleteds) {
     data.battleCompleteds.forEach((battle: BattleData) => {
@@ -110,7 +135,7 @@ export default function LeaderboardByBattles() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Top Blockmon by Battles</h2>
+        <h2 className="text-xl font-semibold">All Blockmon by Battles</h2>
         
         <div className="inline-flex rounded-md shadow-sm" role="group">
           <button
@@ -170,7 +195,7 @@ export default function LeaderboardByBattles() {
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {(page - 1) * pageSize + index + 1}
                     </div>
-                    {index < 3 && (
+                    {index < 3 && pokemon.totalBattles > 0 && (
                       <div className="ml-2">
                         {index === 0 && <span className="text-yellow-500">🥇</span>}
                         {index === 1 && <span className="text-gray-400">🥈</span>}
@@ -185,7 +210,10 @@ export default function LeaderboardByBattles() {
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">{pokemon.totalBattles}</div>
+                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {pokemon.totalBattles}
+                    {pokemon.totalBattles === 0 && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(No battles yet)</span>}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">{pokemon.wins}</div>
@@ -196,7 +224,9 @@ export default function LeaderboardByBattles() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {new Date(parseInt(pokemon.lastBattle) * 1000).toLocaleDateString()}
+                  {pokemon.totalBattles > 0 
+                    ? new Date(parseInt(pokemon.lastBattle) * 1000).toLocaleDateString()
+                    : 'N/A'}
                 </td>
               </tr>
             ))}
