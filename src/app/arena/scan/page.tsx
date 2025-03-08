@@ -98,7 +98,7 @@ export default function ScanPage() {
               const signer = await provider.getSigner();
               const contract = new ethers.Contract(
                 CONTRACT_ADDRESS,
-                Blockmon,
+                Blockmon.abi,
                 signer
               );
 
