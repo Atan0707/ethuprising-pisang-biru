@@ -1,13 +1,23 @@
-# Tag & Clash
+# Blocknogotchi
 
-Tag & Clash is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world.
+Blocknogotchi is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world.
+
+![image](https://github.com/user-attachments/assets/252fe6c7-e293-451f-a938-efd36e096f41)
 
 ## Features
 
 - **Mint NFT Pets**: Create unique virtual pets with different species and attributes
-- **Care for Your Pet**: Feed, play with, and heal your pet to keep it happy and healthy
-- **Evolution**: Watch your pet evolve through different stages as it grows
+- **Arena**: Fight together with your buddy and be the best!
 - **NFC Integration**: Use NFC cards to claim and interact with your pets
+- **Marketplace**: Trade your NFT card in the marketplace
+
+## Project Architechture 
+
+![image](https://github.com/user-attachments/assets/807e0267-f680-402a-a19c-b679f73ed965)
+
+- Contract Owner will mint the NFC and store the claim hash inside a NFC card
+- User will claim the NFT via NFC with claim hash stored in it.
+- All the data queried using The Graph
 
 ## Getting Started
 
@@ -37,17 +47,15 @@ yarn dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-## Contract Information
+## Contract
 
-- Contract Address: `0x41C29e60aB713998E78cE6a86e55D3E23D68deb3`
-- Network: Ethereum (or compatible EVM chain)
+- NFT Contract - https://sepolia.scrollscan.com/address/0xb5960bda72dba8693c4376bca91c166e10cde75a
+- Marketplace contract - https://sepolia.scrollscan.com/address/0xb5960bda72dba8693c4376bca91c166e10cde75a
 
-## Available Pokemon
+## Subgraph
 
-- **Charmander** (Fire type)
-- **Squirtle** (Water type)
-- **Bulbasaur** (Plant type)
-- **Pikachu** (Electric type)
+- NFT Contract Subgraph - https://thegraph.com/studio/subgraph/ethuprising/
+- Marketplace Subgraph - https://thegraph.com/studio/subgraph/blockmon-marketplace/
 
 ## License
 
@@ -57,4 +65,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Inspired by the classic Tamagotchi virtual pets
 - Built with Next.js, Tailwind CSS, and Ethers.js
-- Pokemon images provided by [Pinata Cloud](https://www.pinata.cloud/)
+- Pokemon images stored on IPFS
