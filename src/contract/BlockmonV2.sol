@@ -256,21 +256,10 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         public
         view
         returns (
-            string memory name,
-            Attribute attribute,
-            Rarity rarity,
-            uint8 level,
-            uint256 hp,
-            uint256 baseDamage,
-            uint256 battleCount,
-            uint256 battleWins,
-            uint256 birthTime,
-            uint256 lastBattleTime,
-            bool claimed,
+            Pokemon memory pokemonData,
             address owner,
-            string memory tokenURI,
-            uint256 age,
-            uint256 experience
+            string memory uri,
+            uint256 age
         )
     {
         require(_exists(tokenId), "Pokemon doesn't exist");
@@ -287,23 +276,7 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
             pokemonAge = block.timestamp - pokemon.birthTime;
         }
 
-        return (
-            pokemon.name,
-            pokemon.attribute,
-            pokemon.rarity,
-            pokemon.level,
-            pokemon.hp,
-            pokemon.baseDamage,
-            pokemon.battleCount,
-            pokemon.battleWins,
-            pokemon.birthTime,
-            pokemon.lastBattleTime,
-            pokemon.claimed,
-            ownerAddress,
-            _getTokenURISafe(tokenId),
-            pokemonAge,
-            pokemon.experience
-        );
+        return (pokemon, ownerAddress, _getTokenURISafe(tokenId), pokemonAge);
     }
 
     function _getTokenURISafe(
