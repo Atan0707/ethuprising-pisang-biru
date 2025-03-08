@@ -56,6 +56,7 @@ yarn dev
 
 - NFT Contract Subgraph - https://thegraph.com/studio/subgraph/ethuprising/
 - Marketplace Subgraph - https://thegraph.com/studio/subgraph/blockmon-marketplace/
+- The Graph repo - https://github.com/Atan0707/ethuprising-thegraph
 
 ## License
 
