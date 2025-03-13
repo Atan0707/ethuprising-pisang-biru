@@ -6,7 +6,7 @@ import { ApolloClient, InMemoryCache, HttpLink, gql } from '@apollo/client';
 // Create an Apollo Client instance for The Graph (Blockmon data)
 const blockmonGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
+    uri: process.env.NEXT_PUBLIC_GRAPH_BLOCKNOGOTCHI_URL || 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
   }),
   cache: new InMemoryCache(),
 });
@@ -14,7 +14,7 @@ const blockmonGraphClient = new ApolloClient({
 // Create an Apollo Client instance for The Graph (Marketplace data)
 const marketplaceGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: 'https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest',
+    uri: process.env.NEXT_PUBLIC_GRAPH_MARKETPLACE_URL || 'https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest',
   }),
   cache: new InMemoryCache(),
 });

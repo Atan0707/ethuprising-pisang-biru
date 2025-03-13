@@ -7,7 +7,7 @@ import { getAttributeString, getRarityString } from './marketplace';
 // Create an Apollo Client instance for The Graph (P2P Swap data)
 const p2pSwapGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: 'https://api.studio.thegraph.com/query/105196/blocknogotchi-escrow/version/latest',
+    uri: process.env.NEXT_PUBLIC_GRAPH_P2P_URL || 'https://api.studio.thegraph.com/query/105196/blocknogotchi-escrow/version/latest',
   }),
   cache: new InMemoryCache(),
 });
