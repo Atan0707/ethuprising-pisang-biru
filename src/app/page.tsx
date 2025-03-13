@@ -105,14 +105,14 @@ export default function Home() {
             <ol className="list-decimal pl-6 space-y-2">
               <li>
                 <strong>Host a Game:</strong> Have a third person create a game
-                code by clicking "Host a Game"
+                code by clicking &quot;Host a Game&quot;
               </li>
               <li>
                 <strong>Join the Game:</strong> Both players join using the same
                 game code
               </li>
               <li>
-                <strong>Make Your Gesture:</strong> After the countdown, you'll
+                <strong>Make Your Gesture:</strong> After the countdown, you&apos;ll
                 have 5 seconds to make your rock, paper, or scissors gesture
               </li>
               <li>

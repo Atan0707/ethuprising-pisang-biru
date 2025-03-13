@@ -9,7 +9,11 @@ interface Pokemon {
     baseDamage: number;
     image?: string;
     owner?: string;
-    moves?: any[];
+    moves?: Array<{
+        name: string;
+        damage: number;
+        type: string;
+    }>;
 }
 
 interface Player {
@@ -18,6 +22,13 @@ interface Player {
     joined: boolean;
     currentHealth: number;
     gesture: string | null;
+}
+
+interface BattleMove {
+    player: 'player1' | 'player2';
+    moveName: string;
+    damage: number;
+    timestamp: string;
 }
 
 interface Battle {
@@ -29,7 +40,7 @@ interface Battle {
     pokemon2: Pokemon;
     player1: Player;
     player2: Player;
-    moves: any[];
+    moves: BattleMove[];
     winner: string | null;
     lastUpdated: string;
 }

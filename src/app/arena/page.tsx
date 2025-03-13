@@ -36,7 +36,7 @@ export default function ArenaPage() {
           Arena
         </h1>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {/* Card 1: Scan Arena */}
           <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
             <PixelCanvas
@@ -115,6 +115,33 @@ export default function ArenaPage() {
                 <Link href="/leaderboard" className="block">
                   <RetroButton variant="purple" size="full" className="w-full">
                     Go to Leaderboard
+                  </RetroButton>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Events */}
+          <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
+            <PixelCanvas
+              gap={10}
+              speed={25}
+              colors={["#fef3c7", "#fcd34d", "#f59e0b"]}
+              variant="icon"
+            />
+            <div className="p-6 relative z-10 flex flex-col flex-grow">
+              <div className="flex-grow">
+                <h2 className="text-xl font-semibold mb-3 font-retro tracking-wide uppercase">
+                  Special Events
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-4 font-pixel tracking-wide">
+                  Participate in limited-time tournaments and special battles.
+                </p>
+              </div>
+              <div className="mt-auto">
+                <Link href="/arena/event" className="block">
+                  <RetroButton variant="default" size="full" className="w-full">
+                    Go to Events
                   </RetroButton>
                 </Link>
               </div>

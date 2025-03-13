@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
   
   // Check if player is already in this game
   if (game.players.some(p => p.id === playerId)) {
-    const playerIndex = game.players.findIndex(p => p.id === playerId);
     const opponent = game.players.find(p => p.id !== playerId);
     
     return NextResponse.json({ 

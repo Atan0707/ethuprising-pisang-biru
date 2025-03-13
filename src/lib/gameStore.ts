@@ -22,7 +22,18 @@ export interface Game {
   hostId?: string;   // ID of the third-party host (if any)
   hostName?: string; // Name of the third-party host (if any)
   code?: string;     // Game code for easy reference and joining
-  battleData?: any;  // Additional data for the battle
+  battleData?: {
+    pokemon1?: {
+      tokenId: string;
+      name: string;
+      attribute: string;
+    };
+    pokemon2?: {
+      tokenId: string;
+      name: string;
+      attribute: string;
+    };
+  };  // Additional data for the battle
 }
 
 // Global store for games
@@ -35,9 +46,10 @@ interface GameStoreData {
   waitingPlayers: Player[];
 }
 
-// Declare a global variable for our game store
+// Properly declare the global variable
 declare global {
-  var gameStoreData: GameStoreData;
+  // eslint-disable-next-line no-var
+  var gameStoreData: GameStoreData | undefined;
 }
 
 // Initialize the global store if it doesn't exist
@@ -52,22 +64,22 @@ if (!global.gameStoreData) {
     const now = Date.now();
     
     // Clean up old games
-    Object.keys(global.gameStoreData.games).forEach(gameId => {
-      if (now - global.gameStoreData.games[gameId].updatedAt > 30 * 60 * 1000) { // 30 minutes
-        delete global.gameStoreData.games[gameId];
+    Object.keys(global.gameStoreData!.games).forEach(gameId => {
+      if (now - global.gameStoreData!.games[gameId].updatedAt > 30 * 60 * 1000) { // 30 minutes
+        delete global.gameStoreData!.games[gameId];
       }
     });
     
     // Clean up waiting players who have been waiting for more than 10 minutes
     while (
-      global.gameStoreData.waitingPlayers.length > 0 && 
-      global.gameStoreData.waitingPlayers[0].createdAt && 
-      now - global.gameStoreData.waitingPlayers[0].createdAt > 10 * 60 * 1000
+      global.gameStoreData!.waitingPlayers.length > 0 && 
+      global.gameStoreData!.waitingPlayers[0].createdAt && 
+      now - global.gameStoreData!.waitingPlayers[0].createdAt > 10 * 60 * 1000
     ) {
-      global.gameStoreData.waitingPlayers.shift();
+      global.gameStoreData!.waitingPlayers.shift();
     }
     
-    console.log('Cleanup job ran. Current games:', Object.keys(global.gameStoreData.games));
+    console.log('Cleanup job ran. Current games:', Object.keys(global.gameStoreData!.games));
   }, 5 * 60 * 1000); // Run every 5 minutes
 }
 
@@ -75,22 +87,22 @@ if (!global.gameStoreData) {
 export class GameStore {
   // Getter for games
   get games(): Record<string, Game> {
-    return global.gameStoreData.games;
+    return global.gameStoreData!.games;
   }
   
   // Getter for waitingPlayers
   get waitingPlayers(): Player[] {
-    return global.gameStoreData.waitingPlayers;
+    return global.gameStoreData!.waitingPlayers;
   }
   
   // Check if a game exists by ID
   exists(gameId: string): boolean {
-    return !!global.gameStoreData.games[gameId];
+    return !!global.gameStoreData!.games[gameId];
   }
   
   // Get a game by ID
   get(gameId: string): Game {
-    return global.gameStoreData.games[gameId];
+    return global.gameStoreData!.games[gameId];
   }
   
   // Find a game by code (typically the last 6 chars of the gameId in uppercase)
