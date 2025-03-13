@@ -39,7 +39,7 @@ export default function ListNFTPage() {
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedNFT, setScannedNFT] = useState<number | null>(null);
-  const requireNfcVerification = true; //testing purposes
+  const requireNfcVerification = false; //testing purposes
   const router = useRouter();
   
   // Use reown wallet integration
