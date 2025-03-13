@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
+// import Link from 'next/link';
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { getAttributeString, getRarityString } from '@/app/utils/marketplace';
-import { getP2PListingDetails, P2PListing, DetailedP2PListing } from '@/app/utils/p2p-swap';
+// import { getAttributeString, getRarityString } from '@/app/utils/marketplace';
+import { 
+  getP2PListingDetails, 
+  // P2PListing, 
+  DetailedP2PListing } from '@/app/utils/p2p-swap';
 
 export default function P2PSwapPage() {
   const [isScanning, setIsScanning] = useState(false);
@@ -67,7 +70,7 @@ export default function P2PSwapPage() {
       return;
     }
     
-    router.push('/p2p-swap/create');
+    router.push('/p2p/create');
   };
 
   // Function to handle wallet connection

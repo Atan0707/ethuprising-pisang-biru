@@ -456,7 +456,7 @@ export default function OwnerBlockmonsPage() {
                               </Link>
                               {isCurrentUser && (
                                 <Link 
-                                  href={`/marketplace/list/${blockmon.id}`} 
+                                  href={`/p2p/create`} 
                                   className="text-green-600 hover:text-green-800 text-sm font-medium"
                                 >
                                   List for Sale

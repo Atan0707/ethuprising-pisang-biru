@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Eip1193Provider } from 'ethers';
 import { createP2PListing } from '@/app/utils/p2p-swap';
 import { getOwnedNFTs, BlockmonData } from '@/app/utils/marketplace';
+import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc';
 import { Button } from '@/components/ui/button';
 
 export default function CreateP2PListingPage() {
@@ -15,11 +16,13 @@ export default function CreateP2PListingPage() {
   const [selectedNFT, setSelectedNFT] = useState<BlockmonData | null>(null);
   const [price, setPrice] = useState<string>('');
   const [nfcHash, setNfcHash] = useState<string>('');
+  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [nfcVerified, setNfcVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [nfcSupported, setNfcSupported] = useState(false);
   const router = useRouter();
   
   // Use reown wallet integration
@@ -30,6 +33,10 @@ export default function CreateP2PListingPage() {
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
+    // Check if NFC is supported
+    if (typeof window !== 'undefined') {
+      setNfcSupported(isNfcSupported());
+    }
   }, []);
 
   // Fetch user's owned NFTs
@@ -59,6 +66,7 @@ export default function CreateP2PListingPage() {
     // Reset NFC verification when selecting a different NFT
     setNfcVerified(false);
     setNfcHash('');
+    setNfcSerialNumber('');
   };
 
   // Function to handle price input
@@ -70,28 +78,68 @@ export default function CreateP2PListingPage() {
     }
   };
 
-  // Function to simulate NFC scanning
-  const handleScanNFC = () => {
+  // Function to handle real NFC scanning
+  const handleScanNFC = async () => {
     if (!selectedNFT) {
       toast.error('Please select an NFT first');
       return;
     }
     
-    setIsScanning(true);
+    if (!nfcSupported) {
+      toast.error('NFC is not supported on this device or browser');
+      return;
+    }
     
-    // Simulate NFC scanning process
-    setTimeout(() => {
-      // Generate a random hash to simulate NFC reading
-      const randomHash = Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
+    setIsScanning(true);
+    const toastId = toast.loading('Scanning NFC card...', {
+      description: 'Please hold your NFC card near your device',
+      duration: 10000, // 10 seconds
+    });
+    
+    try {
+      // Try to get the serial number first
+      const serialNumber = await getNfcSerialNumber();
+      setNfcSerialNumber(serialNumber);
       
-      const hash = `0x${randomHash}`;
+      // Then read the data from the NFC tag
+      const nfcData = await readFromNfcTag({ timeoutMs: 15000 }); // 15 second timeout
+      
+      // Validate the NFC data
+      if (!nfcData) {
+        throw new Error('No data read from NFC card');
+      }
+      
+      // Use the NFC data as the hash or process it as needed
+      // For security, you might want to hash the data or verify it against blockchain data
+      const hash = nfcData.startsWith('0x') ? nfcData : `0x${nfcData}`;
+      
       setNfcHash(hash);
       setNfcVerified(true);
+      toast.dismiss(toastId);
+      toast.success('NFC card scanned and verified successfully!', {
+        description: `Serial: ${serialNumber.slice(0, 8)}...`,
+      });
+    } catch (error) {
+      console.error('Error scanning NFC card:', error);
+      toast.dismiss(toastId);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          toast.error('Scan timed out. Please try again and hold your card closer to the device.');
+        } else if (error.message.includes('permission')) {
+          toast.error('NFC permission denied. Please allow NFC access in your browser settings.');
+        } else if (error.message.includes('No data')) {
+          toast.error('No valid data found on NFC card. Please ensure this is the correct card.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error('Failed to scan NFC card. Please try again.');
+      }
+    } finally {
       setIsScanning(false);
-      toast.success('NFC card scanned and verified successfully!');
-    }, 2000);
+    }
   };
 
   // Function to handle form submission
@@ -119,29 +167,36 @@ export default function CreateP2PListingPage() {
     }
     
     setIsSubmitting(true);
-    toast.loading('Creating P2P listing...');
+    const toastId = toast.loading('Creating P2P listing...');
     
     try {
+      // Include the NFC serial number in the listing for additional verification
       const success = await createP2PListing(
         selectedNFT.id,
         price,
         nfcHash,
-        walletProvider as Eip1193Provider
+        walletProvider as Eip1193Provider,
+        nfcSerialNumber // Pass the serial number if your API supports it
       );
       
       if (success) {
-        toast.dismiss();
+        toast.dismiss(toastId);
         toast.success('P2P listing created successfully!');
         
         // Redirect to the P2P swap page after a short delay
         setTimeout(() => {
-          router.push('/p2p-swap');
+          router.push('/p2p');
         }, 1500);
       }
     } catch (error) {
       console.error('Error creating P2P listing:', error);
-      toast.dismiss();
-      toast.error('Failed to create P2P listing');
+      toast.dismiss(toastId);
+      
+      if (error instanceof Error) {
+        toast.error(`Failed to create P2P listing: ${error.message}`);
+      } else {
+        toast.error('Failed to create P2P listing');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -201,7 +256,7 @@ export default function CreateP2PListingPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <button
-            onClick={() => router.push('/p2p-swap')}
+            onClick={() => router.push('/p2p')}
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -274,19 +329,41 @@ export default function CreateP2PListingPage() {
                   Scan the NFC chip in your physical card to verify ownership before listing.
                 </p>
                 
+                {!nfcSupported && (
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                    <div className="flex items-center text-yellow-600 dark:text-yellow-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span>NFC is not supported on this device or browser. Please use a compatible device.</span>
+                    </div>
+                  </div>
+                )}
+                
                 {nfcVerified ? (
-                  <div className="flex items-center text-green-600 dark:text-green-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>NFC Card Verified</span>
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                    <div className="flex items-center text-green-600 dark:text-green-400 mb-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="font-medium">NFC Card Verified</span>
+                    </div>
+                    {nfcSerialNumber && (
+                      <p className="text-xs text-green-600 dark:text-green-400 ml-7">
+                        Card Serial: {nfcSerialNumber.slice(0, 8)}...{nfcSerialNumber.slice(-4)}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <Button
                     type="button"
                     onClick={handleScanNFC}
-                    disabled={isScanning || !selectedNFT}
-                    className={`w-full ${selectedNFT ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                    disabled={isScanning || !selectedNFT || !nfcSupported}
+                    className={`w-full ${
+                      selectedNFT && nfcSupported 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
                     {isScanning ? (
                       <>
@@ -294,7 +371,12 @@ export default function CreateP2PListingPage() {
                         Scanning...
                       </>
                     ) : (
-                      'Scan NFC Card'
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                        Scan NFC Card
+                      </>
                     )}
                   </Button>
                 )}

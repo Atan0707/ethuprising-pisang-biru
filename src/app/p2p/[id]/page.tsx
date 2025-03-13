@@ -9,7 +9,7 @@ import { Eip1193Provider } from 'ethers';
 import { getP2PListingDetails, purchaseP2PListing, cancelP2PListing, claimBackP2PListing, DetailedP2PListing } from '@/app/utils/p2p-swap';
 import { Button } from '@/components/ui/button';
 
-export default function P2PSwapDetailPage({ params }: { params: { id: string } }) {
+export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [listing, setListing] = useState<DetailedP2PListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,10 +33,12 @@ export default function P2PSwapDetailPage({ params }: { params: { id: string } }
   useEffect(() => {
     const fetchListingDetails = async () => {
       if (!mounted) return;
+
+      const id = await params;
       
       setIsLoading(true);
       try {
-        const listingId = parseInt(params.id);
+        const listingId = parseInt(id.id);
         const details = await getP2PListingDetails(listingId);
         console.log('P2P listing details:', details);
         setListing(details);
@@ -49,7 +51,7 @@ export default function P2PSwapDetailPage({ params }: { params: { id: string } }
     };
 
     fetchListingDetails();
-  }, [mounted, params.id]);
+  }, [mounted, params]);
 
   // Function to simulate NFC scanning
   const handleScanNFC = () => {
