@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getOwnedNFTs, BlockmonData } from '@/app/utils/marketplace';
+import { getP2PListings, P2PListing } from '@/app/utils/p2p-swap';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useAppKitAccount } from '@reown/appkit/react';
@@ -45,7 +46,9 @@ export default function OwnerBlockmonsPage() {
   const [rarityFilter, setRarityFilter] = useState<number | null>(null);
   const [sortOption, setSortOption] = useState<'level' | 'rarity' | 'attribute' | 'name'>('level');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [marketplaceListings] = useState<number[]>([]);
+  const [marketplaceListings, setMarketplaceListings] = useState<number[]>([]);
+  const [p2pListings, setP2PListings] = useState<P2PListing[]>([]);
+  const [showOnlyListed, setShowOnlyListed] = useState(false);
 
   // Check if the profile belongs to the current user
   const isCurrentUser = useMemo(() => {
@@ -80,8 +83,27 @@ export default function OwnerBlockmonsPage() {
         
         setBlockmons(ownedTokens);
         
-        // TODO: Fetch marketplace listings for this user
-        // This would require a new function in marketplace.ts
+        // Fetch P2P listings
+        try {
+          const allP2PListings = await getP2PListings();
+          // Filter listings by the current owner
+          const ownerP2PListings = allP2PListings.filter(
+            listing => listing.seller.toLowerCase() === ownerAddress.toLowerCase()
+          );
+          
+          setP2PListings(ownerP2PListings);
+          
+          // Create an array of token IDs that are listed
+          const listedTokenIds = ownerP2PListings.map(listing => listing.id);
+          setMarketplaceListings(listedTokenIds);
+          
+          if (ownerP2PListings.length > 0) {
+            console.log(`Found ${ownerP2PListings.length} P2P listings for this owner`);
+          }
+        } catch (error) {
+          console.error('Error fetching P2P listings:', error);
+          // Don't set an error state here, as we still want to show the owned Blockmons
+        }
         
         setIsLoading(false);
       } catch (error) {
@@ -122,6 +144,11 @@ export default function OwnerBlockmonsPage() {
       result = result.filter(blockmon => blockmon.rarity === rarityFilter);
     }
     
+    // Apply listed filter
+    if (showOnlyListed) {
+      result = result.filter(blockmon => marketplaceListings.includes(blockmon.id));
+    }
+    
     // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
@@ -145,7 +172,7 @@ export default function OwnerBlockmonsPage() {
     });
     
     return result;
-  }, [blockmons, searchTerm, attributeFilter, rarityFilter, sortOption, sortDirection]);
+  }, [blockmons, searchTerm, attributeFilter, rarityFilter, sortOption, sortDirection, marketplaceListings, showOnlyListed]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -268,7 +295,7 @@ export default function OwnerBlockmonsPage() {
                   </div>
                   <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                     <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {stats.rarityDistribution[4]} / {stats.total}
+                      {stats.rarityDistribution[4]} 
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Legendary Blockmon</div>
                   </div>
@@ -375,6 +402,32 @@ export default function OwnerBlockmonsPage() {
                   </div>
                 </div>
                 
+                {/* Listed filter toggle */}
+                <div className="mt-4 flex items-center">
+                  <button
+                    onClick={() => setShowOnlyListed(!showOnlyListed)}
+                    className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      showOnlyListed 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' 
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className={`h-4 w-4 mr-1.5 transition-opacity ${showOnlyListed ? 'opacity-100' : 'opacity-50'}`} 
+                      viewBox="0 0 20 20" 
+                      fill="currentColor"
+                    >
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    {showOnlyListed ? 'Listed for Sale Only' : 'Show All Blockmons'}
+                  </button>
+                  
+                  <div className="ml-4 text-sm text-gray-500 dark:text-gray-400">
+                    {marketplaceListings.length} Blockmons listed for sale
+                  </div>
+                </div>
+                
                 <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
                   Showing {filteredAndSortedBlockmons.length} of {blockmons.length} Blockmon
                 </div>
@@ -392,6 +445,7 @@ export default function OwnerBlockmonsPage() {
                         setSearchTerm('');
                         setAttributeFilter(null);
                         setRarityFilter(null);
+                        setShowOnlyListed(false);
                       }}
                       className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
@@ -400,73 +454,100 @@ export default function OwnerBlockmonsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredAndSortedBlockmons.map((blockmon, index) => (
-                      <motion.div
-                        key={blockmon.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                      >
-                        <div className="border rounded-lg overflow-hidden cursor-pointer transition-all border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg transform hover:-translate-y-1">
-                          <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
-                            {blockmon.tokenURI ? (
-                              <Image
-                                src={blockmon.tokenURI}
-                                alt={blockmon.name}
-                                fill
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center">
-                                <span className="text-6xl">{attributeMap[blockmon.attribute].icon}</span>
-                              </div>
-                            )}
-                            <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                              Lvl {blockmon.level}
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                              <h3 className="text-lg font-semibold text-white">{blockmon.name}</h3>
-                              <div className="flex items-center gap-1 mt-1">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${attributeMap[blockmon.attribute].bgColor} ${attributeMap[blockmon.attribute].color}`}>
-                                  {attributeMap[blockmon.attribute].icon} {attributeMap[blockmon.attribute].name}
-                                </span>
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${rarityMap[blockmon.rarity].bgColor} ${rarityMap[blockmon.rarity].color}`}>
-                                  {rarityMap[blockmon.rarity].name}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                ID: #{blockmon.id}
-                              </span>
-                              {marketplaceListings.includes(blockmon.id) && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                  Listed
-                                </span>
+                    {filteredAndSortedBlockmons.map((blockmon, index) => {
+                      // Find the P2P listing for this blockmon if it exists
+                      const p2pListing = p2pListings.find(listing => listing.id === blockmon.id);
+                      const isListed = marketplaceListings.includes(blockmon.id);
+                      
+                      return (
+                        <motion.div
+                          key={blockmon.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                        >
+                          <div className={`border rounded-lg overflow-hidden cursor-pointer transition-all ${
+                            isListed 
+                              ? 'border-green-300 dark:border-green-700' 
+                              : 'border-gray-200 dark:border-gray-700'
+                          } hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg transform hover:-translate-y-1`}>
+                            <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
+                              {blockmon.tokenURI ? (
+                                <Image
+                                  src={blockmon.tokenURI}
+                                  alt={blockmon.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center">
+                                  <span className="text-6xl">{attributeMap[blockmon.attribute].icon}</span>
+                                </div>
                               )}
+                              <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                Lvl {blockmon.level}
+                              </div>
+                              {isListed && (
+                                <div className="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                                  </svg>
+                                  For Sale
+                                </div>
+                              )}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                                <h3 className="text-lg font-semibold text-white">{blockmon.name}</h3>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${attributeMap[blockmon.attribute].bgColor} ${attributeMap[blockmon.attribute].color}`}>
+                                    {attributeMap[blockmon.attribute].icon} {attributeMap[blockmon.attribute].name}
+                                  </span>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${rarityMap[blockmon.rarity].bgColor} ${rarityMap[blockmon.rarity].color}`}>
+                                    {rarityMap[blockmon.rarity].name}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="mt-2 flex justify-between">
-                              <Link 
-                                href={`/blockmon/${blockmon.id}`}
-                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                              >
-                                View Details
-                              </Link>
-                              {isCurrentUser && (
+                            <div className="p-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  ID: #{blockmon.id}
+                                </span>
+                                {isListed && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                                    {p2pListing ? `${p2pListing.price} ETH` : 'Listed'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 flex justify-between">
                                 <Link 
-                                  href={`/p2p/create`} 
-                                  className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                  href={`/blockmon/${blockmon.id}`}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                 >
-                                  List for Sale
+                                  View Details
                                 </Link>
-                              )}
+                                {isCurrentUser && (
+                                  isListed ? (
+                                    <Link 
+                                      href={`/p2p/${blockmon.id}`} 
+                                      className="text-amber-600 hover:text-amber-800 text-sm font-medium"
+                                    >
+                                      Manage Listing
+                                    </Link>
+                                  ) : (
+                                    <Link 
+                                      href={`/p2p/create?tokenId=${blockmon.id}`} 
+                                      className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                    >
+                                      List for Sale
+                                    </Link>
+                                  )
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
