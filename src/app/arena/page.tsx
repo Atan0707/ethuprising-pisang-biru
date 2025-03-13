@@ -1,31 +1,31 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { PixelCanvas } from '@/components/ui/pixel-canvas'
-import { RetroButton } from '@/components/ui/retro-button'
+import Link from "next/link";
+import { PixelCanvas } from "@/components/ui/pixel-canvas";
+import { RetroButton } from "@/components/ui/retro-button";
 
 export default function ArenaPage() {
   return (
     <div className="relative">
       {/* Background image - positioned to respect navbar */}
-      <div 
-        className="fixed inset-0 top-16 -z-10" 
+      <div
+        className="fixed inset-0 top-16 -z-10"
         style={{
           backgroundImage: "url('/images/back.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
         }}
       >
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-blue-900/70 to-purple-900/70"></div>
-        
+
         {/* Pattern overlay */}
-        <div 
-          className="absolute inset-0 opacity-10" 
+        <div
+          className="absolute inset-0 opacity-10"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '60px 60px'
+            backgroundSize: "60px 60px",
           }}
         />
       </div>
@@ -35,8 +35,8 @@ export default function ArenaPage() {
         <h1 className="text-3xl font-bold mb-6 text-white font-retro tracking-wide uppercase">
           Arena
         </h1>
-        
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {/* Card 1: Scan Arena */}
           <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
             <PixelCanvas
@@ -63,7 +63,7 @@ export default function ArenaPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Card 2: Battle History */}
           <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
             <PixelCanvas
@@ -82,13 +82,18 @@ export default function ArenaPage() {
                 </p>
               </div>
               <div className="mt-auto">
-                <RetroButton variant="darkGray" size="full" className="w-full" disabled>
+                <RetroButton
+                  variant="darkGray"
+                  size="full"
+                  className="w-full"
+                  disabled
+                >
                   Coming Soon
                 </RetroButton>
               </div>
             </div>
           </div>
-          
+
           {/* Card 3: Leaderboard */}
           <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
             <PixelCanvas
@@ -115,8 +120,35 @@ export default function ArenaPage() {
               </div>
             </div>
           </div>
+
+          {/* Card 4: Events */}
+          <div className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 backdrop-blur-sm flex flex-col h-full">
+            <PixelCanvas
+              gap={10}
+              speed={25}
+              colors={["#fef3c7", "#fcd34d", "#f59e0b"]}
+              variant="icon"
+            />
+            <div className="p-6 relative z-10 flex flex-col flex-grow">
+              <div className="flex-grow">
+                <h2 className="text-xl font-semibold mb-3 font-retro tracking-wide uppercase">
+                  Special Events
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-4 font-pixel tracking-wide">
+                  Participate in limited-time tournaments and special battles.
+                </p>
+              </div>
+              <div className="mt-auto">
+                <Link href="/arena/event" className="block">
+                  <RetroButton variant="default" size="full" className="w-full">
+                    Go to Events
+                  </RetroButton>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

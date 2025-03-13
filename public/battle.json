@@ -1,0 +1,17 @@
+{
+  "code": "G4KGYB",
+  "deviceA": {
+    "tokenId": "12",
+    "joined": true,
+    "gesture": "rock",
+    "score": 0,
+    "ready": false
+  },
+  "deviceB": {
+    "tokenId": "13",
+    "joined": true,
+    "gesture": "paper",
+    "score": 0,
+    "ready": false
+  }
+}

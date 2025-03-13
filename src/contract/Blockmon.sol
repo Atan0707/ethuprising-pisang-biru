@@ -7,30 +7,45 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Blockmon is ERC721, ERC721URIStorage, Ownable {
     uint256 private _currentTokenId;
-    
+
     // Pokemon attributes - single structure for both storage and view
     struct Pokemon {
         string name;
         Attribute attribute;
         Rarity rarity;
-        uint8 level;        // Pokemon level (starts at 1)
-        uint256 hp;         // Health points
+        uint8 level; // Pokemon level (starts at 1)
+        uint256 hp; // Health points
         uint256 baseDamage; // Base attack damage
         uint256 battleCount; // Total battles participated
         uint256 battleWins; // Total battles won
-        uint256 birthTime;  // When the pokemon was claimed
+        uint256 birthTime; // When the pokemon was claimed
         uint256 lastBattleTime; // Last time the pokemon battled
-        bool claimed;       // Whether the pokemon has been claimed
+        bool claimed; // Whether the pokemon has been claimed
         uint256 experience; // Experience points
     }
 
-    enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
-    enum Attribute { FIRE, WATER, PLANT, ELECTRIC, EARTH, AIR, LIGHT, DARK }
+    enum Rarity {
+        COMMON,
+        UNCOMMON,
+        RARE,
+        EPIC,
+        LEGENDARY
+    }
+    enum Attribute {
+        FIRE,
+        WATER,
+        PLANT,
+        ELECTRIC,
+        EARTH,
+        AIR,
+        LIGHT,
+        DARK
+    }
 
     // Level up constants
     uint256 constant XP_PER_LEVEL = 100;
     uint256 constant MAX_LEVEL = 100;
-    
+
     // Battle cooldown (in seconds)
     uint256 constant BATTLE_COOLDOWN = 1 minutes;
 
@@ -46,7 +61,11 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
 
     event PokemonCreated(uint256 indexed tokenId, bytes32 claimHash);
     event PokemonClaimed(uint256 indexed tokenId, address indexed claimer);
-    event BattleCompleted(uint256 indexed tokenId, uint256 indexed opponentId, bool won);
+    event BattleCompleted(
+        uint256 indexed tokenId,
+        uint256 indexed opponentId,
+        bool won
+    );
     event PokemonLeveledUp(uint256 indexed tokenId, uint8 newLevel);
     event ExperienceGained(uint256 indexed tokenId, uint256 amount);
 
@@ -65,12 +84,14 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         uint256 newTokenId = _currentTokenId;
 
         // Generate a unique claim hash
-        bytes32 claimHash = keccak256(abi.encodePacked(newTokenId, block.timestamp, msg.sender));
-        
+        bytes32 claimHash = keccak256(
+            abi.encodePacked(newTokenId, block.timestamp, msg.sender)
+        );
+
         // Base stats depend on rarity
         uint256 baseHp = 50 + (uint256(rarity) * 25);
         uint256 baseDmg = 5 + (uint256(rarity) * 3);
-        
+
         pokemons[newTokenId] = Pokemon({
             name: name,
             attribute: attribute,
@@ -91,7 +112,7 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         hashToToken[claimHash] = newTokenId;
 
         _setTokenURI(newTokenId, uri);
-        
+
         emit PokemonCreated(newTokenId, claimHash);
         return (newTokenId, claimHash);
     }
@@ -101,16 +122,16 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
      */
     function claimPokemon(bytes32 hash) public {
         require(!usedHashes[hash], "Hash already used");
-        
+
         // Find the token ID associated with this hash
         uint256 tokenId = hashToToken[hash];
         require(tokenId > 0, "Invalid or expired hash");
         require(!pokemons[tokenId].claimed, "Pokemon already claimed");
-        
+
         usedHashes[hash] = true;
         pokemons[tokenId].claimed = true;
         pokemons[tokenId].birthTime = block.timestamp;
-        
+
         _safeMint(msg.sender, tokenId);
 
         emit PokemonClaimed(tokenId, msg.sender);
@@ -119,110 +140,142 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
     /**
      * Set the address authorized to record battle results
      */
-    function setBattleOracleAddress(address _battleOracleAddress) public onlyOwner {
+    function setBattleOracleAddress(
+        address _battleOracleAddress
+    ) public onlyOwner {
         battleOracleAddress = _battleOracleAddress;
     }
 
     /**
      * Record a battle win for a pokemon (called by battle oracle)
      */
-    function recordBattleWin(uint256 winnerTokenId, uint256 loserTokenId, uint256 experienceGained) public {
-        require(msg.sender == battleOracleAddress || msg.sender == owner(), "Not authorized to record battles");
+    function recordBattleWin(
+        uint256 winnerTokenId,
+        uint256 loserTokenId,
+        uint256 experienceGained
+    ) public {
+        require(
+            msg.sender == battleOracleAddress || msg.sender == owner(),
+            "Not authorized to record battles"
+        );
         require(pokemons[winnerTokenId].claimed, "Winner pokemon not claimed");
         require(pokemons[loserTokenId].claimed, "Loser pokemon not claimed");
         require(winnerTokenId != loserTokenId, "Cannot battle yourself");
-        require(block.timestamp >= pokemons[winnerTokenId].lastBattleTime + BATTLE_COOLDOWN, "Battle cooldown not over");
-        
+        require(
+            block.timestamp >=
+                pokemons[winnerTokenId].lastBattleTime + BATTLE_COOLDOWN,
+            "Battle cooldown not over"
+        );
+
         Pokemon storage winner = pokemons[winnerTokenId];
-        
+
         // Update battle stats
         winner.battleCount += 1;
         winner.battleWins += 1;
         winner.lastBattleTime = block.timestamp;
-        
+
         // Award experience
         awardExperience(winnerTokenId, experienceGained);
-        
+
         emit BattleCompleted(winnerTokenId, loserTokenId, true);
     }
-    
+
     /**
      * Record a battle loss for a pokemon (called by battle oracle)
      */
-    function recordBattleLoss(uint256 loserTokenId, uint256 winnerTokenId, uint256 experienceGained) public {
-        require(msg.sender == battleOracleAddress || msg.sender == owner(), "Not authorized to record battles");
+    function recordBattleLoss(
+        uint256 loserTokenId,
+        uint256 winnerTokenId,
+        uint256 experienceGained
+    ) public {
+        require(
+            msg.sender == battleOracleAddress || msg.sender == owner(),
+            "Not authorized to record battles"
+        );
         require(pokemons[loserTokenId].claimed, "Loser pokemon not claimed");
         require(pokemons[winnerTokenId].claimed, "Winner pokemon not claimed");
         require(loserTokenId != winnerTokenId, "Cannot battle yourself");
-        require(block.timestamp >= pokemons[loserTokenId].lastBattleTime + BATTLE_COOLDOWN, "Battle cooldown not over");
-        
+        require(
+            block.timestamp >=
+                pokemons[loserTokenId].lastBattleTime + BATTLE_COOLDOWN,
+            "Battle cooldown not over"
+        );
+
         Pokemon storage loser = pokemons[loserTokenId];
-        
+
         // Update battle stats
         loser.battleCount += 1;
         loser.lastBattleTime = block.timestamp;
-        
+
         // Award some experience even for losing
         awardExperience(loserTokenId, experienceGained);
-        
+
         emit BattleCompleted(loserTokenId, winnerTokenId, false);
     }
-    
+
     /**
      * Award experience to a pokemon and handle level ups
      */
     function awardExperience(uint256 tokenId, uint256 amount) internal {
         Pokemon storage pokemon = pokemons[tokenId];
-        
+
         // Add experience
         pokemon.experience += amount;
-        
+
         // Check for level up
         uint8 newLevel = uint8(pokemon.experience / XP_PER_LEVEL) + 1;
-        
+
         // Cap at max level
         if (newLevel > MAX_LEVEL) {
             newLevel = uint8(MAX_LEVEL);
         }
-        
+
         // If leveled up
         if (newLevel > pokemon.level) {
             uint8 levelsGained = newLevel - pokemon.level;
-            
+
             // Increase stats based on level gained
             pokemon.hp += levelsGained * (5 + uint256(pokemon.rarity));
-            pokemon.baseDamage += levelsGained * (1 + uint256(pokemon.rarity) / 2);
-            
+            pokemon.baseDamage +=
+                levelsGained *
+                (1 + uint256(pokemon.rarity) / 2);
+
             pokemon.level = newLevel;
             emit PokemonLeveledUp(tokenId, newLevel);
         }
-        
+
         emit ExperienceGained(tokenId, amount);
     }
 
     /**
      * Get all data for a specific pokemon
      */
-    function getPokemon(uint256 tokenId) public view returns (
-        string memory name,
-        Attribute attribute,
-        Rarity rarity,
-        uint8 level,
-        uint256 hp,
-        uint256 baseDamage,
-        uint256 battleCount,
-        uint256 battleWins,
-        uint256 birthTime,
-        uint256 lastBattleTime,
-        bool claimed,
-        address owner,
-        string memory tokenURI,
-        uint256 age,
-        uint256 experience
-    ) {
+    function getPokemon(
+        uint256 tokenId
+    )
+        public
+        view
+        returns (
+            string memory name,
+            Attribute attribute,
+            Rarity rarity,
+            uint8 level,
+            uint256 hp,
+            uint256 baseDamage,
+            uint256 battleCount,
+            uint256 battleWins,
+            uint256 birthTime,
+            uint256 lastBattleTime,
+            bool claimed,
+            address owner,
+            string memory tokenURI,
+            uint256 age,
+            uint256 experience
+        )
+    {
         require(_exists(tokenId), "Pokemon doesn't exist");
         Pokemon storage pokemon = pokemons[tokenId];
-        
+
         address ownerAddress = address(0);
         if (pokemon.claimed) {
             ownerAddress = ownerOf(tokenId);
@@ -253,7 +306,9 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         );
     }
 
-    function _getTokenURISafe(uint256 tokenId) internal view returns (string memory) {
+    function _getTokenURISafe(
+        uint256 tokenId
+    ) internal view returns (string memory) {
         try this.tokenURI(tokenId) returns (string memory uri) {
             return uri;
         } catch {
@@ -275,21 +330,15 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
     }
 
     // Required overrides
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
