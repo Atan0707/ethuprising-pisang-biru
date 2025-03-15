@@ -4,18 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { Eip1193Provider, ethers } from "ethers";
-import Blockmon from "@/contract/Blockmon.json";
 import NFCScanner from "@/app/components/claim/NFCScanner";
 import ClaimSuccess from "@/app/components/claim/ClaimSuccess";
 import { toast } from "sonner";
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
+import Blockmon from "@/contract/Blockmon.json";
 
-// Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blockmon.abi;
-
-// Contract address
-const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0xe1e52a36E15eBf6785842e55b6d1D901819985ec";
 
 // Type for event logs
 interface EventLog {
@@ -139,8 +133,8 @@ export default function ClaimPage() {
       );
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        CONTRACT_ABI,
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        Blockmon.abi,
         signer
       );
 

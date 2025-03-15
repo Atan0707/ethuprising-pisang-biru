@@ -7,7 +7,7 @@ import Blockmon from "@/contract/Blockmon.json";
 import { useAppKitProvider } from "@reown/appkit/react";
 import { toast } from "sonner";
 import NfcModal from "./NfcModal";
-
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 // Pokemon data
 const POKEMON = [
   {
@@ -36,11 +36,11 @@ const POKEMON = [
   },
 ];
 
-// Contract ABI (partial, just what we need)
+// Contract ABI 
 const CONTRACT_ABI = Blockmon.abi;
 
 // Contract address
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
+const CONTRACT_ADDRESS = BLOCKNOGOTCHI_CONTRACT_ADDRESS;
 
 interface MintCardProps {
   isAdmin: boolean;

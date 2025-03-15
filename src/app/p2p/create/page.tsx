@@ -11,9 +11,8 @@ import { BlockmonData } from '@/app/utils/marketplace';
 import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc';
 import { Button } from '@/components/ui/button';
 import BlockmonABI from '@/contract/Blockmon.json';
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from '@/app/utils/config';
 
-// Contract address from environment variables
-const BLOCKMON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xe1e52a36E15eBf6785842e55b6d1D901819985ec';
 
 export default function CreateP2PListingPage() {
   const [selectedNFT, setSelectedNFT] = useState<BlockmonData | null>(null);
@@ -79,7 +78,7 @@ export default function CreateP2PListingPage() {
       // Get the contract instance to find the token ID from the hash
       const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+      const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
       
       // Get token ID from claim hash
       const tokenId = await contract.hashToToken(hash);

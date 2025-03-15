@@ -1,7 +1,7 @@
 import { Eip1193Provider, ethers } from "ethers";
 import BlockmonABI from "@/contract/Blockmon.json";
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "./config";
 
-const BLOCKMON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
 
 export const getSigner = async (walletProvider: Eip1193Provider) => {
     if (!walletProvider) {
@@ -18,7 +18,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
       throw new Error('Signer not available');
     }
     
-    return new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+    return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
   };
 
 // Get the token ID from a hash

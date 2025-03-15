@@ -1,16 +1,16 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
-
+import { GRAPH_BLOCKNOGOTCHI_URL, GRAPH_MARKETPLACE_URL } from './config';
 // Create an Apollo Client instance
 export const blockmonGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_BLOCKNOGOTCHI_URL || 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
+    uri: GRAPH_BLOCKNOGOTCHI_URL,
   }),
   cache: new InMemoryCache(),
 });
 
 export const marketplaceGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_MARKETPLACE_URL || 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
+    uri: GRAPH_MARKETPLACE_URL,
   }),
   cache: new InMemoryCache(),
 });

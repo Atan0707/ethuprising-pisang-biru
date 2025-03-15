@@ -3,18 +3,14 @@ import BlockmonABI from '@/contract/Blockmon.json';
 import P2PSwapABI from '@/contract/P2PSwap.json';
 import { ApolloClient, InMemoryCache, HttpLink, gql } from '@apollo/client';
 import { getAttributeString, getRarityString } from './marketplace';
-
+import { GRAPH_P2P_URL, BLOCKNOGOTCHI_CONTRACT_ADDRESS, P2P_SWAP_CONTRACT_ADDRESS, RPC_URL } from './config';
 // Create an Apollo Client instance for The Graph (P2P Swap data)
 const p2pSwapGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_P2P_URL || 'https://api.studio.thegraph.com/query/105196/blocknogotchi-escrow/version/latest',
+    uri: GRAPH_P2P_URL,
   }),
   cache: new InMemoryCache(),
 });
-
-// Contract addresses from environment variables
-const BLOCKMON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xe1e52a36E15eBf6785842e55b6d1D901819985ec';
-const P2P_SWAP_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_P2P_SWAP_CONTRACT_ADDRESS || '0xE3512091dfCc852fd8c053153f2a8dF70170ce77'; // Replace with actual address
 
 // GraphQL query to get P2P swap listings
 const GET_P2P_LISTINGS = gql`
@@ -122,7 +118,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
     throw new Error('Signer not available');
   }
   
-  return new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
 };
 
 /**
@@ -239,8 +235,8 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
       .map((listing: GraphQLListing) => listing.tokenId);
 
     // Create a provider to interact with the blockchain
-    const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.infura.io/v3/your-infura-key');
-    const blockmonContract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
 
     // Fetch details for each active listing
     const listingsPromises = activeListingIds.map(async (tokenId: string) => {
@@ -319,8 +315,8 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
     }
 
     // Create a provider to interact with the blockchain
-    const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.infura.io/v3/your-infura-key');
-    const blockmonContract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
     
     // Get Blockmon data from the contract
     const blockmonData = await blockmonContract.getBlockmon(tokenId);
