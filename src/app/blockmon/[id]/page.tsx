@@ -6,13 +6,13 @@ import { useQuery, gql } from "@apollo/client";
 import Link from "next/link";
 import Image from "next/image";
 import { ethers } from "ethers";
-import BlockmonABI from "@/contract/Blockmon.json";
+import Blocknogotchi from "@/contract/BlocknogotchiContract.json";
 import { toast } from "sonner";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
-// GraphQL query to get Blockmon battle data
-const GET_BLOCKMON_BATTLES = gql`
-  query GetBlockmonBattles($tokenId: String!) {
+// GraphQL query to get Blocknogotchi battle data
+const GET_BLOCKNOGOTCHI_BATTLES = gql`
+  query GetBlocknogotchiBattles($tokenId: String!) {
     battleCompleteds(
       where: { tokenId: $tokenId }
       first: 100
@@ -29,10 +29,10 @@ const GET_BLOCKMON_BATTLES = gql`
   }
 `;
 
-// GraphQL query to get Blockmon level data
-const GET_BLOCKMON_LEVELS = gql`
-  query GetBlockmonLevels($tokenId: String!) {
-    pokemonLeveledUps(
+// GraphQL query to get Blocknogotchi level data
+const GET_BLOCKNOGOTCHI_LEVELS = gql`
+  query GetBlocknogotchiLevels($tokenId: String!) {
+    blocknogotchiLeveledUps(
       where: { tokenId: $tokenId }
       first: 100
       orderBy: blockTimestamp
@@ -47,10 +47,10 @@ const GET_BLOCKMON_LEVELS = gql`
   }
 `;
 
-// GraphQL query to get Blockmon creation data
-const GET_BLOCKMON_CREATED = gql`
-  query GetBlockmonCreated($tokenId: String!) {
-    pokemonCreateds(where: { tokenId: $tokenId }, first: 1) {
+// GraphQL query to get Blocknogotchi creation data
+const GET_BLOCKNOGOTCHI_CREATED = gql`
+  query GetBlocknogotchiCreated($tokenId: String!) {
+    blocknogotchiCreateds(where: { tokenId: $tokenId }, first: 1) {
       id
       tokenId
       owner
@@ -158,18 +158,18 @@ export default function BlockmonDetailsPage() {
   // Get current user's wallet address
   const { address: currentUserAddress, isConnected } = useAppKitAccount();
 
-  const { data: battleData } = useQuery(GET_BLOCKMON_BATTLES, {
+  const { data: battleData } = useQuery(GET_BLOCKNOGOTCHI_BATTLES, {
     variables: { tokenId },
     skip: !tokenId,
   });
 
-  const { data: levelData } = useQuery(GET_BLOCKMON_LEVELS, {
+  const { data: levelData } = useQuery(GET_BLOCKNOGOTCHI_LEVELS, {
     variables: { tokenId },
     skip: !tokenId,
   });
 
   // We're not using this data directly, but keeping the query for future reference
-  useQuery(GET_BLOCKMON_CREATED, {
+  useQuery(GET_BLOCKNOGOTCHI_CREATED, {
     variables: { tokenId },
     skip: !tokenId,
   });
@@ -190,12 +190,12 @@ export default function BlockmonDetailsPage() {
         // Create contract instance
         const contract = new ethers.Contract(
           contractAddress,
-          BlockmonABI.abi,
+          Blocknogotchi.abi,
           provider
         );
 
         // Call getPokemon function
-        const data = await contract.getPokemon(tokenId);
+        const data = await contract.getBlocknogotchi(tokenId);
 
         setBlockmonData({
           name: data[0],
@@ -255,12 +255,38 @@ export default function BlockmonDetailsPage() {
         return;
       }
 
+      // Connect to the Scroll Sepolia network
+      const provider = new ethers.JsonRpcProvider(
+        "https://sepolia-rpc.scroll.io/"
+      );
+
+      // Create contract instance
+      const contract = new ethers.Contract(
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        Blocknogotchi.abi,
+        provider
+      );
+
+      // Get the claim hash for this token ID
+      // Note: This function is restricted to the contract owner in the smart contract
+      // This will only work if the frontend is being used by the contract owner
+      let claimHash;
+      try {
+        claimHash = await contract.getClaimHash(tokenId);
+        console.log("Claim hash:", claimHash);
+      } catch (err) {
+        console.error("Error fetching claim hash:", err);
+        toast.error("Failed to fetch claim hash. Only contract owner can access this.");
+        setNfcWriting(false);
+        return;
+      }
+
       toast.promise(
         (async () => {
           // @ts-expect-error - NDEFReader might not be recognized by TypeScript
           const ndef = new window.NDEFReader();
           await ndef.write({
-            records: [{ recordType: "text", data: `blockmon-id:${tokenId}` }],
+            records: [{ recordType: "text", data: `blockmon-hash:${claimHash}` }],
           });
           return true;
         })(),

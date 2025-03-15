@@ -7,8 +7,8 @@ import { gql } from '@apollo/client';
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS } from './config';
 
 // GraphQL query to get user's Blockmons
-const GET_USER_BLOCKMONS = gql`
-  query GetUserBlockmons($owner: String!) {
+const GET_USER_BLOCKNOGOTCHIS = gql`
+  query GetUserBlocknogotchis($owner: String!) {
     transfers(
       where: {to: $owner}
       orderBy: blockTimestamp
@@ -18,7 +18,7 @@ const GET_USER_BLOCKMONS = gql`
       tokenId
       blockTimestamp
     }
-    pokemonClaimeds(
+    blocknogotchiClaimeds(
       where: {claimer: $owner}
       orderBy: blockTimestamp
       orderDirection: desc
@@ -247,7 +247,7 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
   try {
     // Query The Graph for tokens owned by the user
     const { data } = await blockmonGraphClient.query({
-      query: GET_USER_BLOCKMONS,
+      query: GET_USER_BLOCKNOGOTCHIS,
       variables: { owner: userAddress.toLowerCase() },
     });
     
@@ -262,8 +262,8 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
     }
     
     // Add tokens from claims
-    if (data.pokemonClaimeds) {
-      data.pokemonClaimeds.forEach((claim: { tokenId: string }) => {
+    if (data.blocknogotchiClaimeds) {
+      data.blocknogotchiClaimeds.forEach((claim: { tokenId: string }) => {
         tokenIds.add(Number(claim.tokenId));
       });
     }

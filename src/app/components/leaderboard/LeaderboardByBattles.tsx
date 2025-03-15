@@ -14,7 +14,7 @@ const GET_BATTLE_DATA = gql`
       won
       blockTimestamp
     }
-    pokemonCreateds(first: 1000) {
+    blocknogotchiCreateds(first: 1000) {
       id
       tokenId
       blockTimestamp
@@ -66,8 +66,8 @@ export default function LeaderboardByBattles() {
   const battleStats: Record<string, PokemonBattleStats> = {};
   
   // First, add all created Pokemon with 0 battles
-  if (data?.pokemonCreateds) {
-    data.pokemonCreateds.forEach((pokemon: PokemonCreated) => {
+  if (data?.blocknogotchiCreateds) {
+    data.blocknogotchiCreateds.forEach((pokemon: PokemonCreated) => {
       if (!battleStats[pokemon.tokenId]) {
         battleStats[pokemon.tokenId] = {
           tokenId: pokemon.tokenId,
@@ -111,7 +111,7 @@ export default function LeaderboardByBattles() {
         };
       }
       
-      // battleStats[battle.opponentId].totalBattles += 1;
+      battleStats[battle.opponentId].totalBattles += 1;
       
       if (parseInt(battle.blockTimestamp) > parseInt(battleStats[battle.opponentId].lastBattle)) {
         battleStats[battle.opponentId].lastBattle = battle.blockTimestamp;
