@@ -8,7 +8,7 @@ import NFCScanner from "@/app/components/claim/NFCScanner";
 import ClaimSuccess from "@/app/components/claim/ClaimSuccess";
 import { toast } from "sonner";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
-import Blockmon from "@/contract/Blockmon.json";
+import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 
 
 // Type for event logs
@@ -134,12 +134,12 @@ export default function ClaimPage() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         BLOCKNOGOTCHI_CONTRACT_ADDRESS,
-        Blockmon.abi,
+        BlocknogotchiContract.abi,
         signer
       );
 
       // Call claimPokemon function with the hash from NFC card
-      const tx = await contract.claimPokemon(claimHash);
+      const tx = await contract.claimBlocknogotchi(claimHash);
 
       // Show transaction submitted toast
       toast.dismiss(pendingToastId);
@@ -175,19 +175,19 @@ export default function ClaimPage() {
           }
         })
         .find(
-          (event: EventLog | null) => event && event.name === "PokemonClaimed"
+          (event: EventLog | null) => event && event.name === "BlocknogotchiClaimed"
         );
 
       if (event && event.args) {
         const tokenId = event.args[0].toString();
 
         // Get pet details
-        const pokemon = await contract.getPokemon(tokenId);
+        const blocknogotchi = await contract.getBlocknogotchi(tokenId);
 
         setClaimResult({
           tokenId,
-          petName: pokemon.name,
-          image: pokemon.tokenURI,
+          petName: blocknogotchi.name,
+          image: blocknogotchi.tokenURI,
         });
       }
     } catch (err) {

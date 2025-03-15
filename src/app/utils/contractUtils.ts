@@ -1,5 +1,5 @@
 import { Eip1193Provider, ethers } from "ethers";
-import BlockmonABI from "@/contract/Blockmon.json";
+import Blocknogotchi from "@/contract/BlocknogotchiContract.json";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "./config";
 
 
@@ -18,7 +18,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
       throw new Error('Signer not available');
     }
     
-    return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+    return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, signer);
   };
 
 // Get the token ID from a hash

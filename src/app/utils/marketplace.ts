@@ -1,5 +1,5 @@
 import { ethers, Eip1193Provider } from 'ethers';
-import BlockmonABI from '@/contract/Blockmon.json';
+import Blocknogotchi from '@/contract/BlocknogotchiContract.json';
 import MarketplaceABI from '@/contract/BlockmonMarketplace.json';
 import { getSigner } from './contractUtils';
 import { blockmonGraphClient, marketplaceGraphClient } from './apollo-client';
@@ -135,7 +135,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
     throw new Error('Signer not available');
   }
   
-  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, signer);
 };
 
 /**
@@ -331,7 +331,7 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, provider);
     
     // Fetch details for each token
     const ownedTokens: BlockmonData[] = [];
@@ -463,7 +463,7 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, provider);
     
     // Fetch details for each listed token
     const listings: MarketplaceListing[] = [];
@@ -578,7 +578,7 @@ export const getListingDetails = async (tokenId: number): Promise<DetailedListin
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, provider);
     
     // Get Blockmon details directly from the blockchain
     const blockmonData = await contract.getPokemon(tokenId);
