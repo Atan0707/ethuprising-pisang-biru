@@ -156,7 +156,7 @@ export default function BlockmonDetailsPage() {
   const [mounted, setMounted] = useState(false);
 
   // Get current user's wallet address
-  const { address: currentUserAddress, isConnected } = useAppKitAccount();
+  const { address: currentUserAddress } = useAppKitAccount();
 
   const { data: battleData } = useQuery(GET_BLOCKNOGOTCHI_BATTLES, {
     variables: { tokenId },
@@ -234,11 +234,7 @@ export default function BlockmonDetailsPage() {
   }, []);
 
   // Check if current user is the owner of the Blockmon
-  const isOwner =
-    mounted &&
-    isConnected &&
-    currentUserAddress &&
-    blockmonData?.owner &&
+  const isOwner = blockmonData && currentUserAddress && 
     currentUserAddress.toLowerCase() === blockmonData.owner.toLowerCase();
 
   // Function to handle writing to NFC
@@ -304,7 +300,7 @@ export default function BlockmonDetailsPage() {
     }
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="container mx-auto px-4 py-16 flex justify-center items-center min-h-screen">
         <div className="animate-bounce text-4xl">
@@ -760,7 +756,7 @@ export default function BlockmonDetailsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
                 Level History
               </h3>
-              {levelData?.pokemonLeveledUps?.length > 0 ? (
+              {levelData?.blocknogotchiLeveledUps?.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
@@ -780,7 +776,7 @@ export default function BlockmonDetailsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {levelData.pokemonLeveledUps.map((level: LevelRecord) => (
+                      {levelData.blocknogotchiLeveledUps.map((level: LevelRecord) => (
                         <tr key={level.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {new Date(

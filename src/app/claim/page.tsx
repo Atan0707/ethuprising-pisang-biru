@@ -189,6 +189,7 @@ export default function ClaimPage() {
           petName: blocknogotchi.name,
           image: blocknogotchi.tokenURI,
         });
+        console.log(claimResult);
       }
     } catch (err) {
       console.error("Error claiming:", err);
