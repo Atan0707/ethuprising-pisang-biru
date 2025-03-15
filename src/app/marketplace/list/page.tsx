@@ -196,7 +196,7 @@ export default function ListNFTPage() {
       }
 
       // Get Pokemon data to verify ownership
-      const pokemonData = await contract.getPokemon(tokenId);
+      const pokemonData = await contract.getBlocknogotchi(tokenId);
       const owner = pokemonData[11]; // owner is at index 11 in the return tuple
 
       if (owner.toLowerCase() !== address?.toLowerCase()) {

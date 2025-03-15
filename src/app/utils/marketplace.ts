@@ -343,7 +343,7 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
           return;
         }
         
-        const data = await contract.getPokemon(tokenId);
+        const data = await contract.getBlocknogotchi(tokenId);
         const owner = data[11];
         
         // Double-check if this token is still owned by the current user and is claimed
@@ -470,7 +470,7 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
     const listingPromises = activeListingTokens.map(async (listing) => {
       try {
         const tokenId = Number(listing.tokenId);
-        const data = await contract.getPokemon(tokenId);
+        const data = await contract.getBlocknogotchi(tokenId);
         
         listings.push({
           id: tokenId,
@@ -581,7 +581,7 @@ export const getListingDetails = async (tokenId: number): Promise<DetailedListin
     const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, provider);
     
     // Get Blockmon details directly from the blockchain
-    const blockmonData = await contract.getPokemon(tokenId);
+    const blockmonData = await contract.getBlocknogotchi(tokenId);
     
     console.log('Raw blockchain data:', blockmonData);
     
