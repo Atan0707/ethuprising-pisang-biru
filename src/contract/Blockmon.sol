@@ -5,22 +5,22 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Blockmon is ERC721, ERC721URIStorage, Ownable {
+contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     uint256 private _currentTokenId;
 
-    // Pokemon attributes - single structure for both storage and view
-    struct Pokemon {
+    // Blocknogotchi attributes - single structure for both storage and view
+    struct Blocknogotchi {
         string name;
         Attribute attribute;
         Rarity rarity;
-        uint8 level; // Pokemon level (starts at 1)
+        uint8 level; // Blocknogotchi level (starts at 1)
         uint256 hp; // Health points
         uint256 baseDamage; // Base attack damage
         uint256 battleCount; // Total battles participated
         uint256 battleWins; // Total battles won
-        uint256 birthTime; // When the pokemon was claimed
-        uint256 lastBattleTime; // Last time the pokemon battled
-        bool claimed; // Whether the pokemon has been claimed
+        uint256 birthTime; // When the blocknogotchi was claimed
+        uint256 lastBattleTime; // Last time the blocknogotchi battled
+        bool claimed; // Whether the blocknogotchi has been claimed
         uint256 experience; // Experience points
     }
 
@@ -45,36 +45,40 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
     // Level up constants
     uint256 constant XP_PER_LEVEL = 100;
     uint256 constant MAX_LEVEL = 100;
+    uint256 EVOLUTION_LEVEL = 30;
 
-    // Battle cooldown (in seconds)
-    uint256 constant BATTLE_COOLDOWN = 1 minutes;
+    // Battle cooldown 
+    uint256 BATTLE_COOLDOWN = 1 minutes;
 
     // Address authorized to record battle results
     address public battleOracleAddress;
 
-    mapping(uint256 => Pokemon) public pokemons;
+    mapping(uint256 => Blocknogotchi) public blocknogotchis;
     mapping(bytes32 => bool) public usedHashes;
     // Store the claim hash for each token ID
-    mapping(uint256 => bytes32) public tokenClaimHashes;
+    mapping(uint256 => bytes32) private tokenClaimHashes;
     // Reverse mapping to find token by hash
-    mapping(bytes32 => uint256) public hashToToken;
+    mapping(bytes32 => uint256) private hashToToken;
 
-    event PokemonCreated(uint256 indexed tokenId, bytes32 claimHash);
-    event PokemonClaimed(uint256 indexed tokenId, address indexed claimer);
+    event BlocknogotchiCreated(uint256 indexed tokenId);
+    event BlocknogotchiClaimed(uint256 indexed tokenId, address indexed claimer);
     event BattleCompleted(
         uint256 indexed tokenId,
         uint256 indexed opponentId,
         bool won
     );
-    event PokemonLeveledUp(uint256 indexed tokenId, uint8 newLevel);
+    event BlocknogotchiLeveledUp(uint256 indexed tokenId, uint8 newLevel);
     event ExperienceGained(uint256 indexed tokenId, uint256 amount);
+    event BlocknogotchiEvolved(uint256 indexed tokenId, Rarity newRarity, string newName);
 
-    constructor() ERC721("Blockmon", "BMN") Ownable(msg.sender) {}
+    constructor() ERC721("Blocknogotchi", "BGC") Ownable(msg.sender) {}
 
     /**
-     * Admin function to create new pokemons that can be claimed
+     * Admin function to create new blocknogotchis that can be claimed
+     * @dev The returned claim hash should be handled securely and never exposed publicly.
+     * It should be distributed to the intended recipient through a secure, private channel.
      */
-    function createPokemon(
+    function createBlocknogotchi(
         string memory name,
         Attribute attribute,
         Rarity rarity,
@@ -83,16 +87,16 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         _currentTokenId += 1;
         uint256 newTokenId = _currentTokenId;
 
-        // Generate a unique claim hash
+        // Generate a unique claim hash with additional randomness for security
         bytes32 claimHash = keccak256(
-            abi.encodePacked(newTokenId, block.timestamp, msg.sender)
+            abi.encodePacked(newTokenId, block.timestamp, msg.sender, blockhash(block.number - 1))
         );
 
         // Base stats depend on rarity
-        uint256 baseHp = 50 + (uint256(rarity) * 25);
-        uint256 baseDmg = 5 + (uint256(rarity) * 3);
+        uint256 baseHp = 30 + (uint256(rarity) * 4);
+        uint256 baseDmg = 5 + (uint256(rarity) * 2);
 
-        pokemons[newTokenId] = Pokemon({
+        blocknogotchis[newTokenId] = Blocknogotchi({
             name: name,
             attribute: attribute,
             rarity: rarity,
@@ -113,117 +117,81 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
 
         _setTokenURI(newTokenId, uri);
 
-        emit PokemonCreated(newTokenId, claimHash);
+        emit BlocknogotchiCreated(newTokenId);
         return (newTokenId, claimHash);
     }
 
     /**
-     * User function to claim a pokemon using a hash from an NFC card
+     * User function to claim a blocknogotchi using a hash from an NFC card
      */
-    function claimPokemon(bytes32 hash) public {
+    function claimBlocknogotchi(bytes32 hash) public {
         require(!usedHashes[hash], "Hash already used");
 
         // Find the token ID associated with this hash
         uint256 tokenId = hashToToken[hash];
         require(tokenId > 0, "Invalid or expired hash");
-        require(!pokemons[tokenId].claimed, "Pokemon already claimed");
+        require(!blocknogotchis[tokenId].claimed, "Blocknogotchi already claimed");
 
         usedHashes[hash] = true;
-        pokemons[tokenId].claimed = true;
-        pokemons[tokenId].birthTime = block.timestamp;
+        blocknogotchis[tokenId].claimed = true;
+        blocknogotchis[tokenId].birthTime = block.timestamp;
 
         _safeMint(msg.sender, tokenId);
 
-        emit PokemonClaimed(tokenId, msg.sender);
+        emit BlocknogotchiClaimed(tokenId, msg.sender);
     }
 
-    /**
-     * Set the address authorized to record battle results
-     */
-    function setBattleOracleAddress(
-        address _battleOracleAddress
-    ) public onlyOwner {
-        battleOracleAddress = _battleOracleAddress;
+    function checkCooldown(uint256 tokenId) public view returns (bool) {
+        return block.timestamp >= blocknogotchis[tokenId].lastBattleTime + BATTLE_COOLDOWN;
     }
-
     /**
-     * Record a battle win for a pokemon (called by battle oracle)
+     * Record a battle result between two blocknogotchis (called by battle oracle)
+     * @param winnerTokenId The token ID of the winning blocknogotchi
+     * @param loserTokenId The token ID of the losing blocknogotchi
+     * @param winnerExperience Experience gained by the winner
+     * @param loserExperience Experience gained by the loser (typically less than winner)
      */
-    function recordBattleWin(
+    function recordBattle(
         uint256 winnerTokenId,
         uint256 loserTokenId,
-        uint256 experienceGained
+        uint256 winnerExperience,
+        uint256 loserExperience
     ) public {
-        require(
-            msg.sender == battleOracleAddress || msg.sender == owner(),
-            "Not authorized to record battles"
-        );
-        require(pokemons[winnerTokenId].claimed, "Winner pokemon not claimed");
-        require(pokemons[loserTokenId].claimed, "Loser pokemon not claimed");
-        require(winnerTokenId != loserTokenId, "Cannot battle yourself");
-        require(
-            block.timestamp >=
-                pokemons[winnerTokenId].lastBattleTime + BATTLE_COOLDOWN,
-            "Battle cooldown not over"
-        );
+        require(blocknogotchis[winnerTokenId].claimed, "Blocknogotchi not claimed");
+        require(blocknogotchis[loserTokenId].claimed, "Blocknogotchi not claimed");
 
-        Pokemon storage winner = pokemons[winnerTokenId];
+        Blocknogotchi storage winner = blocknogotchis[winnerTokenId];
+        Blocknogotchi storage loser = blocknogotchis[loserTokenId];
 
-        // Update battle stats
+        // Update winner stats
         winner.battleCount += 1;
         winner.battleWins += 1;
         winner.lastBattleTime = block.timestamp;
 
-        // Award experience
-        awardExperience(winnerTokenId, experienceGained);
-
-        emit BattleCompleted(winnerTokenId, loserTokenId, true);
-    }
-
-    /**
-     * Record a battle loss for a pokemon (called by battle oracle)
-     */
-    function recordBattleLoss(
-        uint256 loserTokenId,
-        uint256 winnerTokenId,
-        uint256 experienceGained
-    ) public {
-        require(
-            msg.sender == battleOracleAddress || msg.sender == owner(),
-            "Not authorized to record battles"
-        );
-        require(pokemons[loserTokenId].claimed, "Loser pokemon not claimed");
-        require(pokemons[winnerTokenId].claimed, "Winner pokemon not claimed");
-        require(loserTokenId != winnerTokenId, "Cannot battle yourself");
-        require(
-            block.timestamp >=
-                pokemons[loserTokenId].lastBattleTime + BATTLE_COOLDOWN,
-            "Battle cooldown not over"
-        );
-
-        Pokemon storage loser = pokemons[loserTokenId];
-
-        // Update battle stats
+        // Update loser stats
         loser.battleCount += 1;
         loser.lastBattleTime = block.timestamp;
 
-        // Award some experience even for losing
-        awardExperience(loserTokenId, experienceGained);
+        // Award experience to both blocknogotchis
+        awardExperience(winnerTokenId, winnerExperience);
+        awardExperience(loserTokenId, loserExperience);
 
+        // Emit events for both blocknogotchis
+        emit BattleCompleted(winnerTokenId, loserTokenId, true);
         emit BattleCompleted(loserTokenId, winnerTokenId, false);
     }
 
     /**
-     * Award experience to a pokemon and handle level ups
+     * Award experience to a blocknogotchi and handle level ups
      */
     function awardExperience(uint256 tokenId, uint256 amount) internal {
-        Pokemon storage pokemon = pokemons[tokenId];
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
 
         // Add experience
-        pokemon.experience += amount;
+        blocknogotchi.experience += amount;
 
         // Check for level up
-        uint8 newLevel = uint8(pokemon.experience / XP_PER_LEVEL) + 1;
+        uint8 newLevel = uint8(blocknogotchi.experience / XP_PER_LEVEL) + 1;
 
         // Cap at max level
         if (newLevel > MAX_LEVEL) {
@@ -231,26 +199,63 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
         }
 
         // If leveled up
-        if (newLevel > pokemon.level) {
-            uint8 levelsGained = newLevel - pokemon.level;
+        if (newLevel > blocknogotchi.level) {
+            uint8 levelsGained = newLevel - blocknogotchi.level;
 
             // Increase stats based on level gained
-            pokemon.hp += levelsGained * (5 + uint256(pokemon.rarity));
-            pokemon.baseDamage +=
+            blocknogotchi.hp += levelsGained * (2 + uint256(blocknogotchi.rarity));
+            blocknogotchi.baseDamage +=
                 levelsGained *
-                (1 + uint256(pokemon.rarity) / 2);
+                (1 + uint256(blocknogotchi.rarity) / 2);
 
-            pokemon.level = newLevel;
-            emit PokemonLeveledUp(tokenId, newLevel);
+            blocknogotchi.level = newLevel;
+            emit BlocknogotchiLeveledUp(tokenId, newLevel);
         }
 
         emit ExperienceGained(tokenId, amount);
     }
 
+    function checkEvolution(uint256 tokenId) public view returns (bool) {
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
+        return blocknogotchi.level >= EVOLUTION_LEVEL;
+    }
+
     /**
-     * Get all data for a specific pokemon
+     * Evolve a Blocknogotchi to a higher rarity and update its name and URI
+     * @param tokenId The token ID of the Blocknogotchi to evolve
+     * @param newName The new name for the evolved Blocknogotchi
+     * @param newUri The new URI for the evolved Blocknogotchi's metadata
      */
-    function getPokemon(
+    function evolve(uint256 tokenId, string memory newName, string memory newUri) public {
+        require(_exists(tokenId), "Blocknogotchi doesn't exist");
+        require(checkEvolution(tokenId), "Blocknogotchi is not ready to evolve");
+        
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
+        
+        // Ensure we don't exceed the maximum rarity
+        require(uint8(blocknogotchi.rarity) < uint8(Rarity.LEGENDARY), "Blocknogotchi is already at maximum rarity");
+        
+        // Update rarity
+        blocknogotchi.rarity = Rarity(uint8(blocknogotchi.rarity) + 1);
+
+        // Update stats
+        blocknogotchi.hp += 10;
+        blocknogotchi.baseDamage += 2;
+        
+        // Update name
+        blocknogotchi.name = newName;
+        
+        // Update URI
+        _setTokenURI(tokenId, newUri);
+        
+        // Emit an event for the evolution
+        emit BlocknogotchiEvolved(tokenId, blocknogotchi.rarity, newName);
+    }
+
+    /**
+     * Get all data for a specific blocknogotchi
+     */
+    function getBlocknogotchi(
         uint256 tokenId
     )
         public
@@ -273,36 +278,36 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
             uint256 experience
         )
     {
-        require(_exists(tokenId), "Pokemon doesn't exist");
-        Pokemon storage pokemon = pokemons[tokenId];
+        require(_exists(tokenId), "Blocknogotchi doesn't exist");
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
 
         address ownerAddress = address(0);
-        if (pokemon.claimed) {
+        if (blocknogotchi.claimed) {
             ownerAddress = ownerOf(tokenId);
         }
 
         // Calculate current age
-        uint256 pokemonAge = 0;
-        if (pokemon.birthTime > 0) {
-            pokemonAge = block.timestamp - pokemon.birthTime;
+        uint256 blocknogotchiAge = 0;
+        if (blocknogotchi.birthTime > 0) {
+            blocknogotchiAge = block.timestamp - blocknogotchi.birthTime;
         }
 
         return (
-            pokemon.name,
-            pokemon.attribute,
-            pokemon.rarity,
-            pokemon.level,
-            pokemon.hp,
-            pokemon.baseDamage,
-            pokemon.battleCount,
-            pokemon.battleWins,
-            pokemon.birthTime,
-            pokemon.lastBattleTime,
-            pokemon.claimed,
+            blocknogotchi.name,
+            blocknogotchi.attribute,
+            blocknogotchi.rarity,
+            blocknogotchi.level,
+            blocknogotchi.hp,
+            blocknogotchi.baseDamage,
+            blocknogotchi.battleCount,
+            blocknogotchi.battleWins,
+            blocknogotchi.birthTime,
+            blocknogotchi.lastBattleTime,
+            blocknogotchi.claimed,
             ownerAddress,
             _getTokenURISafe(tokenId),
-            pokemonAge,
-            pokemon.experience
+            blocknogotchiAge,
+            blocknogotchi.experience
         );
     }
 
@@ -325,8 +330,31 @@ contract Blockmon is ERC721, ERC721URIStorage, Ownable {
     }
 
     function isPetClaimed(uint256 tokenId) public view returns (bool) {
-        require(_exists(tokenId), "Pokemon doesn't exist");
-        return pokemons[tokenId].claimed;
+        require(_exists(tokenId), "Blocknogotchi doesn't exist");
+        return blocknogotchis[tokenId].claimed;
+    }
+
+    /**
+     * Get the token ID associated with a hash
+     * @param hash The hash to look up
+     * @return The token ID associated with the hash
+     */
+    function getTokenIdFromHash(bytes32 hash) public view returns (uint256) {
+        return hashToToken[hash];
+    }
+
+    function setBattleCooldown(uint256 newCooldown) public onlyOwner {
+        BATTLE_COOLDOWN = newCooldown;
+    }
+
+    /**
+     * Verify if a hash is valid for claiming a token
+     * @param hash The hash to verify
+     * @return Whether the hash is valid and not used
+     */
+    function isValidClaimHash(bytes32 hash) public view returns (bool) {
+        uint256 tokenId = hashToToken[hash];
+        return tokenId > 0 && !usedHashes[hash] && !blocknogotchis[tokenId].claimed;
     }
 
     // Required overrides

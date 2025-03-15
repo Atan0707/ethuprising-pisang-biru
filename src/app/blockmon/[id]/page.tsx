@@ -9,7 +9,7 @@ import { ethers } from "ethers";
 import BlockmonABI from "@/contract/Blockmon.json";
 import { toast } from "sonner";
 import { useAppKitAccount } from "@reown/appkit/react";
-
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 // GraphQL query to get Blockmon battle data
 const GET_BLOCKMON_BATTLES = gql`
   query GetBlockmonBattles($tokenId: String!) {
@@ -185,7 +185,7 @@ export default function BlockmonDetailsPage() {
         );
 
         // Contract address from the-graph/networks.json
-        const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
+        const contractAddress = BLOCKNOGOTCHI_CONTRACT_ADDRESS;
 
         // Create contract instance
         const contract = new ethers.Contract(

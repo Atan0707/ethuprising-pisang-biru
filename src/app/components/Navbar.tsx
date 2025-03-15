@@ -171,14 +171,14 @@ export default function Navbar() {
                 Arena
               </Link>
               <Link 
-                href="/marketplace" 
+                href="/p2p" 
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/marketplace') 
+                  isActive('/p2p') 
                     ? 'text-blue-600 dark:text-blue-400' 
                     : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
                 }`}
               >
-                Marketplace
+                P2P
               </Link>
               <Link 
                 href="/leaderboard" 

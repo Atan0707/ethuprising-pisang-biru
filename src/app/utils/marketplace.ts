@@ -1,27 +1,10 @@
 import { ethers, Eip1193Provider } from 'ethers';
 import BlockmonABI from '@/contract/Blockmon.json';
 import MarketplaceABI from '@/contract/BlockmonMarketplace.json';
-import { ApolloClient, InMemoryCache, HttpLink, gql } from '@apollo/client';
-
-// Create an Apollo Client instance for The Graph (Blockmon data)
-const blockmonGraphClient = new ApolloClient({
-  link: new HttpLink({
-    uri: 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
-  }),
-  cache: new InMemoryCache(),
-});
-
-// Create an Apollo Client instance for The Graph (Marketplace data)
-const marketplaceGraphClient = new ApolloClient({
-  link: new HttpLink({
-    uri: 'https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest',
-  }),
-  cache: new InMemoryCache(),
-});
-
-// Contract addresses from environment variables
-const BLOCKMON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xe1e52a36E15eBf6785842e55b6d1D901819985ec';
-const MARKETPLACE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS || '0xb5960bDa72Dba8693c4376bca91C166E10CDe75A';
+import { getSigner } from './contractUtils';
+import { blockmonGraphClient, marketplaceGraphClient } from './apollo-client';
+import { gql } from '@apollo/client';
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS } from './config';
 
 // GraphQL query to get user's Blockmons
 const GET_USER_BLOCKMONS = gql`
@@ -143,17 +126,6 @@ const GET_LISTING_HISTORY = gql`
   }
 `;
 
-/**
- * Get a signer for the current user
- */
-export const getSigner = async (walletProvider: Eip1193Provider) => {
-  if (!walletProvider) {
-    throw new Error('Wallet provider not available');
-  }
-  
-  const provider = new ethers.BrowserProvider(walletProvider);
-  return provider.getSigner();
-};
 
 /**
  * Get the Blockmon contract instance
@@ -163,7 +135,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
     throw new Error('Signer not available');
   }
   
-  return new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
 };
 
 /**
@@ -359,7 +331,7 @@ export const getOwnedNFTs = async (userAddress: string): Promise<BlockmonData[]>
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
     
     // Fetch details for each token
     const ownedTokens: BlockmonData[] = [];
@@ -491,7 +463,7 @@ export const getActiveListings = async (): Promise<MarketplaceListing[]> => {
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
     
     // Fetch details for each listed token
     const listings: MarketplaceListing[] = [];
@@ -606,7 +578,7 @@ export const getListingDetails = async (tokenId: number): Promise<DetailedListin
     
     // Connect to the blockchain to get token details
     const provider = new ethers.JsonRpcProvider('https://sepolia-rpc.scroll.io/');
-    const contract = new ethers.Contract(BLOCKMON_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
     
     // Get Blockmon details directly from the blockchain
     const blockmonData = await contract.getPokemon(tokenId);
