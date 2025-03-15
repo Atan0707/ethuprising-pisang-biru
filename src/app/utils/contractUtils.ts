@@ -13,7 +13,7 @@ export const getSigner = async (walletProvider: Eip1193Provider) => {
   };
 
 // Get the Blockmon contract instance
-export const getBlockmonContract = async (signer?: ethers.Signer) => {
+export const getBlocknogotchiContract = async (signer?: ethers.Signer) => {
     if (!signer) {
       throw new Error('Signer not available');
     }
@@ -24,6 +24,6 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
 // Get the token ID from a hash
 export const hashToId = async (hash: string, provider: Eip1193Provider) => {
     const signer = await getSigner(provider);
-    const contract = await getBlockmonContract(signer);
+    const contract = await getBlocknogotchiContract(signer);
     return contract.getTokenIdFromHash(hash);
   };
