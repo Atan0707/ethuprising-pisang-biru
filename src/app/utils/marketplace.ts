@@ -1,23 +1,10 @@
 import { ethers, Eip1193Provider } from 'ethers';
 import BlockmonABI from '@/contract/Blockmon.json';
 import MarketplaceABI from '@/contract/BlockmonMarketplace.json';
-import { ApolloClient, InMemoryCache, HttpLink, gql } from '@apollo/client';
+import { getSigner } from './contractUtils';
+import { blockmonGraphClient, marketplaceGraphClient } from './apollo-client';
+import { gql } from '@apollo/client';
 
-// Create an Apollo Client instance for The Graph (Blockmon data)
-const blockmonGraphClient = new ApolloClient({
-  link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_BLOCKNOGOTCHI_URL || 'https://api.studio.thegraph.com/query/105196/ethuprising/version/latest',
-  }),
-  cache: new InMemoryCache(),
-});
-
-// Create an Apollo Client instance for The Graph (Marketplace data)
-const marketplaceGraphClient = new ApolloClient({
-  link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_MARKETPLACE_URL || 'https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest',
-  }),
-  cache: new InMemoryCache(),
-});
 
 // Contract addresses from environment variables
 const BLOCKMON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xe1e52a36E15eBf6785842e55b6d1D901819985ec';
@@ -143,17 +130,6 @@ const GET_LISTING_HISTORY = gql`
   }
 `;
 
-/**
- * Get a signer for the current user
- */
-export const getSigner = async (walletProvider: Eip1193Provider) => {
-  if (!walletProvider) {
-    throw new Error('Wallet provider not available');
-  }
-  
-  const provider = new ethers.BrowserProvider(walletProvider);
-  return provider.getSigner();
-};
 
 /**
  * Get the Blockmon contract instance

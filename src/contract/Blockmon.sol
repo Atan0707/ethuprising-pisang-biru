@@ -45,6 +45,7 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     // Level up constants
     uint256 constant XP_PER_LEVEL = 100;
     uint256 constant MAX_LEVEL = 100;
+    uint256 EVOLUTION_LEVEL = 30;
 
     // Battle cooldown 
     uint256 BATTLE_COOLDOWN = 1 minutes;
@@ -59,7 +60,7 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     // Reverse mapping to find token by hash
     mapping(bytes32 => uint256) private hashToToken;
 
-    event BlocknogotchiCreated(uint256 indexed tokenId, bytes32 claimHash);
+    event BlocknogotchiCreated(uint256 indexed tokenId);
     event BlocknogotchiClaimed(uint256 indexed tokenId, address indexed claimer);
     event BattleCompleted(
         uint256 indexed tokenId,
@@ -68,11 +69,14 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     );
     event BlocknogotchiLeveledUp(uint256 indexed tokenId, uint8 newLevel);
     event ExperienceGained(uint256 indexed tokenId, uint256 amount);
+    event BlocknogotchiEvolved(uint256 indexed tokenId, Rarity newRarity, string newName);
 
     constructor() ERC721("Blocknogotchi", "BGC") Ownable(msg.sender) {}
 
     /**
      * Admin function to create new blocknogotchis that can be claimed
+     * @dev The returned claim hash should be handled securely and never exposed publicly.
+     * It should be distributed to the intended recipient through a secure, private channel.
      */
     function createBlocknogotchi(
         string memory name,
@@ -83,9 +87,9 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
         _currentTokenId += 1;
         uint256 newTokenId = _currentTokenId;
 
-        // Generate a unique claim hash
+        // Generate a unique claim hash with additional randomness for security
         bytes32 claimHash = keccak256(
-            abi.encodePacked(newTokenId, block.timestamp, msg.sender)
+            abi.encodePacked(newTokenId, block.timestamp, msg.sender, blockhash(block.number - 1))
         );
 
         // Base stats depend on rarity
@@ -113,7 +117,7 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
 
         _setTokenURI(newTokenId, uri);
 
-        emit BlocknogotchiCreated(newTokenId, claimHash);
+        emit BlocknogotchiCreated(newTokenId);
         return (newTokenId, claimHash);
     }
 
@@ -199,7 +203,7 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
             uint8 levelsGained = newLevel - blocknogotchi.level;
 
             // Increase stats based on level gained
-            blocknogotchi.hp += levelsGained * (5 + uint256(blocknogotchi.rarity));
+            blocknogotchi.hp += levelsGained * (2 + uint256(blocknogotchi.rarity));
             blocknogotchi.baseDamage +=
                 levelsGained *
                 (1 + uint256(blocknogotchi.rarity) / 2);
@@ -209,6 +213,43 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
         }
 
         emit ExperienceGained(tokenId, amount);
+    }
+
+    function checkEvolution(uint256 tokenId) public view returns (bool) {
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
+        return blocknogotchi.level >= EVOLUTION_LEVEL;
+    }
+
+    /**
+     * Evolve a Blocknogotchi to a higher rarity and update its name and URI
+     * @param tokenId The token ID of the Blocknogotchi to evolve
+     * @param newName The new name for the evolved Blocknogotchi
+     * @param newUri The new URI for the evolved Blocknogotchi's metadata
+     */
+    function evolve(uint256 tokenId, string memory newName, string memory newUri) public {
+        require(_exists(tokenId), "Blocknogotchi doesn't exist");
+        require(checkEvolution(tokenId), "Blocknogotchi is not ready to evolve");
+        
+        Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
+        
+        // Ensure we don't exceed the maximum rarity
+        require(uint8(blocknogotchi.rarity) < uint8(Rarity.LEGENDARY), "Blocknogotchi is already at maximum rarity");
+        
+        // Update rarity
+        blocknogotchi.rarity = Rarity(uint8(blocknogotchi.rarity) + 1);
+
+        // Update stats
+        blocknogotchi.hp += 10;
+        blocknogotchi.baseDamage += 2;
+        
+        // Update name
+        blocknogotchi.name = newName;
+        
+        // Update URI
+        _setTokenURI(tokenId, newUri);
+        
+        // Emit an event for the evolution
+        emit BlocknogotchiEvolved(tokenId, blocknogotchi.rarity, newName);
     }
 
     /**
@@ -294,15 +335,10 @@ contract Blocknogotchi is ERC721, ERC721URIStorage, Ownable {
     }
 
     /**
-     * Get the claim hash for a token - only callable by contract owner
-     * @param tokenId The token ID to get the claim hash for
-     * @return The claim hash for the token
+     * Get the token ID associated with a hash
+     * @param hash The hash to look up
+     * @return The token ID associated with the hash
      */
-    function getTokenClaimHash(uint256 tokenId) public view onlyOwner returns (bytes32) {
-        require(_exists(tokenId), "Blocknogotchi doesn't exist");
-        return tokenClaimHashes[tokenId];
-    }
-
     function getTokenIdFromHash(bytes32 hash) public view returns (uint256) {
         return hashToToken[hash];
     }
