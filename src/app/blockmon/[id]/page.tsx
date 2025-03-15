@@ -157,7 +157,6 @@ export default function BlockmonDetailsPage() {
   // Add state for evolution
   const [canEvolve, setCanEvolve] = useState(false);
   const [evolving, setEvolving] = useState(false);
-  const [newName, setNewName] = useState("");
   const [showEvolveModal, setShowEvolveModal] = useState(false);
 
   // Get current user's wallet address
@@ -250,9 +249,9 @@ export default function BlockmonDetailsPage() {
   }, []);
 
   // Check if current user is the owner of the Blockmon
-  // const isOwner = blockmonData && currentUserAddress && 
-  //   currentUserAddress.toLowerCase() === blockmonData.owner.toLowerCase();
-  const isOwner = true;
+  const isOwner = blockmonData && currentUserAddress && 
+    currentUserAddress.toLowerCase() === blockmonData.owner.toLowerCase();
+  // const isOwner = true;
 
   // Function to handle writing to NFC
   const handleWriteToNFC = async () => {
@@ -317,9 +316,14 @@ export default function BlockmonDetailsPage() {
     }
   };
 
+  // Function to handle opening the evolution modal
+  const openEvolveModal = () => {
+    setShowEvolveModal(true);
+  };
+
   // Function to handle evolution
   const handleEvolve = async () => {
-    if (!tokenId || !newName || !walletProvider) return;
+    if (!tokenId || !walletProvider) return;
 
     try {
       setEvolving(true);
@@ -335,13 +339,27 @@ export default function BlockmonDetailsPage() {
         signer
       );
 
-      // Generate a new URI based on the current one
-      // This is a simple approach - you might want to implement a more sophisticated method
-      const currentURI = blockmonData?.tokenURI || "";
-      const newURI = currentURI; // For simplicity, we're keeping the same URI
+      // Determine the new URI and name based on the Blockmon's name
+      let newURI = blockmonData?.tokenURI || "";
+      let evolvedName = "";
+      
+      // Apply specific evolution rules
+      if (blockmonData?.name === "Marisoul") {
+        // Marisoul evolves to Aquavaria with a specific URI
+        newURI = "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeib26y36zajuenlo6gm6cbpcw4h6czq4gx3panlhrvo6av3hafkhtu";
+        evolvedName = "Aquavaria";
+      } else if (blockmonData?.name === "Duskveil") {
+        // Duskveil evolves to Nocturnyx with a specific URI
+        newURI = "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeidyq7s7u35aowcjr5fe27nq6glfdp7u52wsl7uwdgo2fuwfvinbw4";
+        evolvedName = "Nocturnyx";
+      } else {
+        // For other Blockmon, keep the same URI and use a generic evolved name
+        evolvedName = `Evolved ${blockmonData?.name}`;
+        // newURI is already set to the original URI
+      }
 
       // Call the evolve function
-      const tx = await contract.evolve(tokenId, newName, newURI);
+      const tx = await contract.evolve(tokenId, evolvedName, newURI);
       
       toast.promise(
         tx.wait(),
@@ -571,7 +589,7 @@ export default function BlockmonDetailsPage() {
               {/* Evolution Button - Only show if current user is the owner and Blockmon can evolve */}
               {isOwner && canEvolve && blockmonData.rarity < 4 && (
                 <button
-                  onClick={() => setShowEvolveModal(true)}
+                  onClick={openEvolveModal}
                   disabled={evolving}
                   className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
                 >
@@ -929,22 +947,100 @@ export default function BlockmonDetailsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-4">Evolve Your Blockmon</h2>
-            <p className="mb-4">
-              Your Blockmon is ready to evolve from {rarity.name} to{" "}
-              {rarityMap[blockmonData.rarity + 1]?.name}! This will increase its stats and make it stronger.
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                New Name for Your Evolved Blockmon
-              </label>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder={`Evolved ${blockmonData.name}`}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            
+            {/* Evolution Preview */}
+            <div className="flex items-center justify-center mb-6">
+              {/* Current Form */}
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto rounded-full border-2 border-gray-300 overflow-hidden bg-white flex items-center justify-center">
+                  {blockmonData.tokenURI ? (
+                    <Image
+                      src={blockmonData.tokenURI}
+                      alt={blockmonData.name}
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">{attribute.icon}</span>
+                  )}
+                </div>
+                <p className="mt-2 font-medium">{blockmonData.name}</p>
+              </div>
+              
+              {/* Arrow */}
+              <div className="mx-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </div>
+              
+              {/* Evolved Form */}
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto rounded-full border-2 border-yellow-400 overflow-hidden bg-white flex items-center justify-center">
+                  {blockmonData.name === "Marisoul" ? (
+                    <Image
+                      src="https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeib26y36zajuenlo6gm6cbpcw4h6czq4gx3panlhrvo6av3hafkhtu"
+                      alt="Aquavaria"
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : blockmonData.name === "Duskveil" ? (
+                    <Image
+                      src="https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeidyq7s7u35aowcjr5fe27nq6glfdp7u52wsl7uwdgo2fuwfvinbw4"
+                      alt="Nocturnyx"
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : blockmonData.tokenURI ? (
+                    <Image
+                      src={blockmonData.tokenURI}
+                      alt={`Evolved ${blockmonData.name}`}
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">{attribute.icon}</span>
+                  )}
+                </div>
+                <p className="mt-2 font-medium">
+                  {blockmonData.name === "Marisoul" 
+                    ? "Aquavaria" 
+                    : blockmonData.name === "Duskveil"
+                      ? "Nocturnyx"
+                      : `Evolved ${blockmonData.name}`}
+                </p>
+              </div>
             </div>
+            
+            <div className="mb-6 text-center">
+              <p className="mb-2">
+                Your Blockmon is ready to evolve from {rarity.name} to{" "}
+                {rarityMap[blockmonData.rarity + 1]?.name}!
+              </p>
+              {blockmonData.name === "Marisoul" && (
+                <p className="font-semibold text-blue-600 text-lg">
+                  Marisoul will evolve into Aquavaria!
+                </p>
+              )}
+              {blockmonData.name === "Duskveil" && (
+                <p className="font-semibold text-purple-600 text-lg">
+                  Duskveil will evolve into Nocturnyx!
+                </p>
+              )}
+              {blockmonData.name !== "Marisoul" && blockmonData.name !== "Duskveil" && (
+                <p className="font-semibold text-green-600 text-lg">
+                  {blockmonData.name} will evolve into Evolved {blockmonData.name}!
+                </p>
+              )}
+              <p className="mt-2">
+                This will increase its stats and make it stronger.
+              </p>
+            </div>
+            
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowEvolveModal(false)}
@@ -954,9 +1050,9 @@ export default function BlockmonDetailsPage() {
               </button>
               <button
                 onClick={handleEvolve}
-                disabled={!newName || evolving}
+                disabled={evolving}
                 className={`px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 ${
-                  !newName || evolving ? "opacity-50 cursor-not-allowed" : ""
+                  evolving ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 {evolving ? "Evolving..." : "Evolve"}

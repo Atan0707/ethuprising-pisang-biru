@@ -22,6 +22,7 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
         uint256 lastBattleTime; // Last time the blocknogotchi battled
         bool claimed; // Whether the blocknogotchi has been claimed
         uint256 experience; // Experience points
+        bool hasEvolved; // Whether the blocknogotchi has already evolved
     }
 
     enum Rarity {
@@ -93,8 +94,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
         );
 
         // Base stats depend on rarity
-        uint256 baseHp = 30 + (uint256(rarity) * 4);
-        uint256 baseDmg = 5 + (uint256(rarity) * 2);
+        uint256 baseHp = 30 + (uint256(rarity) * 2);
+        uint256 baseDmg = 3 + (uint256(rarity));
 
         blocknogotchis[newTokenId] = Blocknogotchi({
             name: name,
@@ -108,7 +109,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
             birthTime: 0, // Will be set when claimed
             lastBattleTime: 0, // Will be set when claimed
             claimed: false,
-            experience: 0
+            experience: 0,
+            hasEvolved: false // Initialize to false (never evolved)
         });
 
         // Store the claim hash for this token
@@ -203,10 +205,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
             uint8 levelsGained = newLevel - blocknogotchi.level;
 
             // Increase stats based on level gained
-            blocknogotchi.hp += levelsGained * (2 + uint256(blocknogotchi.rarity));
-            blocknogotchi.baseDamage +=
-                levelsGained *
-                (1 + uint256(blocknogotchi.rarity) / 2);
+            blocknogotchi.hp += levelsGained * (1 + uint256(blocknogotchi.rarity));
+            blocknogotchi.baseDamage += levelsGained * (1 + uint256(blocknogotchi.rarity));
 
             blocknogotchi.level = newLevel;
             emit BlocknogotchiLeveledUp(tokenId, newLevel);
@@ -217,7 +217,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
 
     function checkEvolution(uint256 tokenId) public view returns (bool) {
         Blocknogotchi storage blocknogotchi = blocknogotchis[tokenId];
-        return blocknogotchi.level >= EVOLUTION_LEVEL;
+        // Check if the Blocknogotchi has reached the evolution level and hasn't evolved yet
+        return blocknogotchi.level >= EVOLUTION_LEVEL && !blocknogotchi.hasEvolved;
     }
 
     /**
@@ -248,6 +249,9 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
         // Update URI
         _setTokenURI(tokenId, newUri);
         
+        // Mark this Blocknogotchi as evolved
+        blocknogotchi.hasEvolved = true;
+        
         // Emit an event for the evolution
         emit BlocknogotchiEvolved(tokenId, blocknogotchi.rarity, newName);
     }
@@ -275,7 +279,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
             address owner,
             string memory _tokenURI,
             uint256 age,
-            uint256 experience
+            uint256 experience,
+            bool hasEvolved
         )
     {
         require(_exists(tokenId), "Blocknogotchi doesn't exist");
@@ -307,7 +312,8 @@ contract BlocknogotchiContract is ERC721, ERC721URIStorage, Ownable {
             ownerAddress,
             _getTokenURISafe(tokenId),
             blocknogotchiAge,
-            blocknogotchi.experience
+            blocknogotchi.experience,
+            blocknogotchi.hasEvolved
         );
     }
 
