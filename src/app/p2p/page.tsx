@@ -15,6 +15,8 @@ import {
   purchaseP2PListing } from '@/app/utils/p2p-swap';
 import { getBlocknogotchiContract } from '../utils/contractUtils';
 import NFCScanner from '@/app/components/p2p/NFCScanner';
+import ListingsGrid from '@/app/components/p2p/ListingsGrid';
+import BlocknogotchiImage from '@/app/components/BlocknogotchiImage';
 import { Eip1193Provider, ethers } from 'ethers';
 import {
   Dialog,
@@ -24,67 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-// Add BlockmonImage component
-const BlockmonImage = ({ tokenURI, alt }: { tokenURI: string; alt: string }) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchImage = async () => {
-      try {
-        // Convert IPFS URL to HTTP URL using Pinata gateway instead of ipfs.io
-        const httpUrl = tokenURI.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
-
-        // Try to fetch and parse as JSON first
-        try {
-          const response = await fetch(httpUrl);
-          const contentType = response.headers.get('content-type');
-          
-          // If it's JSON, parse it and get the image URL
-          if (contentType?.includes('application/json')) {
-            const metadata = await response.json();
-            let imageUrl = metadata.image;
-            if (imageUrl.startsWith('ipfs://')) {
-              imageUrl = imageUrl.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
-            }
-            setImageUrl(imageUrl);
-          } else {
-            // If it's not JSON, assume it's a direct image URL
-            setImageUrl(httpUrl);
-          }
-        } catch {
-          // If parsing as JSON fails, assume it's a direct image URL
-          setImageUrl(httpUrl);
-        }
-      } catch (error) {
-        console.error('Error fetching image:', error);
-        setImageUrl(null);
-      }
-    };
-
-    fetchImage();
-  }, [tokenURI]);
-
-  if (!imageUrl) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-600">
-        <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      </div>
-    );
-  }
-
-  return (
-    <Image
-      src={imageUrl}
-      alt={alt}
-      width={300}
-      height={300}
-      className="w-full h-full object-cover"
-    />
-  );
-};
 
 export default function P2PSwapPage() {
   const [isScanning, setIsScanning] = useState(false);
@@ -278,6 +219,8 @@ export default function P2PSwapPage() {
           </div>
         </div>
 
+        
+
         {/* NFC Scan Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
           <div className="text-center mb-8">
@@ -320,9 +263,11 @@ export default function P2PSwapPage() {
                 <div className="p-6">
                   {/* NFT Image */}
                   <div className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden mb-6 max-w-[200px] mx-auto">
-                    <BlockmonImage
+                    <BlocknogotchiImage
                       tokenURI={scannedListing.rawData?.tokenURI || scannedListing.image}
                       alt={scannedListing.name}
+                      width={200}
+                      height={200}
                     />
                   </div>
                   
@@ -449,7 +394,20 @@ export default function P2PSwapPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Available Listings Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Available Blocknogotchi</h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Browse all Blocknogotchi currently available for trade
+            </p>
+          </div>
+          
+          <ListingsGrid />
+        </div>
       </div>
+      
     </div>
   );
 }
