@@ -60,6 +60,10 @@ function Battle() {
   const [damageTo, setDamageTo] = useState("");
   const [manaGained, setManaGained] = useState([]);
 
+  // Add state for blockmon selection
+  const [playerBlockmon, setPlayerBlockmon] = useState("Aquavaria");
+  const [opponentBlockmon, setOpponentBlockmon] = useState("Ignisoul");
+
   const [yourPlayer, setYourPlayer] = useState({
     health: YOU.health,
     mana: YOU.mana,
@@ -87,6 +91,27 @@ function Battle() {
       reconnection: true,
       secure: true,
     });
+
+    // Select random blockmons for player and opponent
+    const blockmons = [
+      "Aquavaria",
+      "Duskveil",
+      "Marisoul",
+      "Nocturnyx",
+      "Luminox",
+      "Ignisoul",
+      "Golethorn"
+    ];
+    
+    // Ensure player and opponent get different blockmons
+    const playerIndex = Math.floor(Math.random() * blockmons.length);
+    let opponentIndex;
+    do {
+      opponentIndex = Math.floor(Math.random() * blockmons.length);
+    } while (opponentIndex === playerIndex);
+    
+    setPlayerBlockmon(blockmons[playerIndex]);
+    setOpponentBlockmon(blockmons[opponentIndex]);
 
     newSocket.on("connect", () => {
       console.log("Connected to server:", socketUrl);
@@ -208,7 +233,7 @@ function Battle() {
         data.manaGained.forEach((player: string) => {
           newLog.push(`${player === "you" ? "You" : "Opponent"} gained mana!`);
         });
-        return [...newLog, ...prev].slice(0, 5);
+        return [...newLog, ...prev].slice(0, 2);
       });
     });
 
@@ -240,142 +265,244 @@ function Battle() {
 
   return (
     <>
-      <div className=" min-h-screen w-full">
-        <div className=" flex flex-col h-[100vh] py-4">
+      <div 
+        className="min-h-screen w-full bg-no-repeat bg-cover bg-center fixed inset-0" 
+        style={{ 
+          backgroundImage: "url('/images/events/battle-theme/background-battle.gif')",
+          imageRendering: "pixelated",
+          backgroundSize: "100% 100%"
+        }}
+      >
+        <div className="flex flex-col h-screen">
           {gameState.status === "idle" && (
-            <>
+            <div className="flex justify-center items-center h-screen">
               <button
                 onClick={handleJoinGame}
-                className=" bg-primary text-light px-4 py-2 rounded"
+                className="px-8 py-4 rounded pixelated font-bold uppercase text-xl bg-gray-700 text-white border-t-4 border-l-4 border-gray-500 border-b-4 border-r-4 border-gray-900 hover:bg-gray-600"
               >
                 Join Game
               </button>
-            </>
+            </div>
           )}
 
-          {gameState.status === "waiting" && <div>waiting for opponent</div>}
+          {gameState.status === "waiting" && (
+            <div className="flex justify-center items-center h-screen">
+              <div className="px-8 py-4 rounded pixelated font-bold text-xl text-white bg-gray-800 border-2 border-gray-600">
+                Waiting for opponent...
+              </div>
+            </div>
+          )}
 
           {gameState.status === "playing" && (
             <>
-              {/* Opponent Section */}
-              <div className="flex-1 flex flex-col">
-                <div className="flex justify-center items-center h-[70%]">
-                  <div className="w-20 h-20 rounded-full bg-red-500"></div>
+              {/* Health bars at the top but with more padding */}
+              <div className="flex flex-row w-full pt-25 px-8 gap-4">
+                {/* Player health/mana - Left */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center">
+                    <span className="text-white mr-2 font-bold pixelated">HP</span>
+                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
+                        style={{ 
+                          width: `${yourPlayer.healthPercent}%`,
+                          boxShadow: "0 0 4px #ff0000"
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-white mr-2 font-bold pixelated">MP</span>
+                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
+                        style={{ 
+                          width: `${yourPlayer.manaPercent}%`,
+                          boxShadow: "0 0 4px #0000ff"
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center justify-end pb-4">
-                  <div className="w-[80%] space-y-2">
-                    <div
-                      className="h-4 bg-red-600 rounded-full transition-all duration-300"
-                      style={{ width: `${opponentPlayer.healthPercent}%` }}
-                    ></div>
-                    <div
-                      className="h-4 bg-blue-600 rounded-full transition-all duration-300"
-                      style={{ width: `${opponentPlayer.manaPercent}%` }}
-                    ></div>
+                
+                {/* Combat Log - Middle */}
+                <div className="w-[40%] flex flex-col items-center justify-center overflow-auto text-white">
+                  <div 
+                    className="w-full h-full flex flex-col items-center justify-center pixelated relative"
+                    style={{
+                      backgroundImage: "url('/images/events/battle-theme/chatbox.png')",
+                      backgroundSize: "100% 100%",
+                      backgroundRepeat: "no-repeat",
+                      imageRendering: "pixelated",
+                      minHeight: "80px"
+                    }}
+                  >
+                    {combatLog.slice(0, 2).map((log, index) => (
+                      <div 
+                        key={index} 
+                        className="text-sm text-center font-bold text-black"
+                        style={{ textShadow: "1px 1px 0 #fff" }}
+                      >
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Opponent health/mana - Right */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center">
+                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
+                        style={{ 
+                          width: `${opponentPlayer.healthPercent}%`,
+                          boxShadow: "0 0 4px #ff0000"
+                        }}
+                      ></div>
+                    </div>
+                    <span className="text-white ml-2 font-bold pixelated">HP</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
+                        style={{ 
+                          width: `${opponentPlayer.manaPercent}%`,
+                          boxShadow: "0 0 4px #0000ff"
+                        }}
+                      ></div>
+                    </div>
+                    <span className="text-white ml-2 font-bold pixelated">MP</span>
                   </div>
                 </div>
               </div>
-
-              {/* Combat Log - Middle */}
-              <div className="h-[20%] w-full flex flex-col items-center overflow-auto text-white p-4 border-y-2 border-gray-400">
-                {combatLog.map((log, index) => (
-                  <div key={index} className="text-sm">
-                    {log}
-                  </div>
-                ))}
+              
+              {/* Main battle area with players positioned at the bottom */}
+              <div className="flex-1 flex flex-row w-full relative">
+                {/* Player avatar - Left */}
+                <div className="absolute bottom-[-10%] left-[15%]">
+                  <img 
+                    src={`/blockmon/${playerBlockmon}.gif`} 
+                    alt="Player Blockmon" 
+                    className="w-40 h-40 object-contain"
+                    style={{ 
+                      imageRendering: "pixelated",
+                      filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                    }}
+                  />
+                </div>
+                
+                {/* Opponent avatar - Right */}
+                <div className="absolute bottom-[-10%] right-[15%]">
+                  <img 
+                    src={`/blockmon/${opponentBlockmon}.gif`} 
+                    alt="Opponent Blockmon" 
+                    className="w-40 h-40 object-contain"
+                    style={{ 
+                      imageRendering: "pixelated",
+                      filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* Player Section */}
-              <div className="flex-1 flex flex-col">
-                <div className="flex justify-center items-center h-[40%]">
-                  <div className="w-20 h-20 rounded-full bg-blue-500"></div>
-                </div>
-
-                {/* Health/Mana bars now between circle and buttons */}
-                <div className="flex flex-col items-center justify-center py-4">
-                  <div className="w-[80%] space-y-2">
-                    <div
-                      className="h-4 bg-red-600 rounded-full transition-all duration-300"
-                      style={{ width: `${yourPlayer.healthPercent}%` }}
-                    ></div>
-                    <div
-                      className="h-4 bg-blue-600 rounded-full transition-all duration-300"
-                      style={{ width: `${yourPlayer.manaPercent}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Buttons at the bottom */}
-                <div className="flex flex-row justify-center gap-2 w-full p-3 text-black">
-                  <button
-                    onClick={() => handleMove("attack")}
-                    disabled={Boolean(
-                      gameState.myMove ||
-                        gameOver ||
-                        yourPlayer.mana < YOU.manaPerAttack
-                    )}
-                    className={`px-4 py-2 rounded-md ${
-                      gameState.myMove ||
+              {/* Buttons at the bottom */}
+              <div className="flex flex-row justify-center gap-4 w-full p-3">
+                <button
+                  onClick={() => handleMove("attack")}
+                  disabled={Boolean(
+                    gameState.myMove ||
                       gameOver ||
                       yourPlayer.mana < YOU.manaPerAttack
-                        ? "bg-gray-400"
-                        : "bg-white hover:bg-blue-500 hover:text-white"
-                    }`}
-                  >
-                    attack
-                  </button>
-                  <button
-                    onClick={() => handleMove("dodge")}
-                    disabled={Boolean(gameState.myMove || gameOver)}
-                    className={`px-4 py-2 rounded-md ${
-                      gameState.myMove || gameOver
-                        ? "bg-gray-400"
-                        : "bg-white hover:bg-blue-500 hover:text-white"
-                    }`}
-                  >
-                    dodge
-                  </button>
-                  <button
-                    onClick={() => handleMove("mana")}
-                    disabled={Boolean(gameState.myMove || gameOver)}
-                    className={`px-4 py-2 rounded-md ${
-                      gameState.myMove || gameOver
-                        ? "bg-gray-400"
-                        : "bg-white hover:bg-blue-500 hover:text-white"
-                    }`}
-                  >
-                    mana
-                  </button>
-                </div>
+                  )}
+                  className={`px-6 py-3 rounded pixelated font-bold uppercase ${
+                    gameState.myMove ||
+                    gameOver ||
+                    yourPlayer.mana < YOU.manaPerAttack
+                      ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
+                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                  }`}
+                >
+                  Attack
+                </button>
+                <button
+                  onClick={() => handleMove("dodge")}
+                  disabled={Boolean(gameState.myMove || gameOver)}
+                  className={`px-6 py-3 rounded pixelated font-bold uppercase ${
+                    gameState.myMove || gameOver
+                      ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
+                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                  }`}
+                >
+                  Dodge
+                </button>
+                <button
+                  onClick={() => handleMove("mana")}
+                  disabled={Boolean(gameState.myMove || gameOver)}
+                  className={`px-6 py-3 rounded pixelated font-bold uppercase ${
+                    gameState.myMove || gameOver
+                      ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
+                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                  }`}
+                >
+                  Mana
+                </button>
               </div>
 
               {/* Keep the overlay messages */}
               {gameState.myMove && !gameState.opponentMoved && (
                 <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                              bg-black bg-opacity-50 text-white p-4 rounded"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated"
                 >
-                  Waiting for opponent&apos;s move...
+                  <div className="bg-gray-900 border-4 border-t-gray-700 border-l-gray-700 border-b-gray-950 border-r-gray-950 p-6 rounded-lg">
+                    <div className="text-center text-xl font-bold text-white animate-pulse">
+                      Waiting for opponent&apos;s move...
+                    </div>
+                    <div className="flex justify-center mt-3 space-x-1">
+                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {gameOver && (
                 <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                              bg-black bg-opacity-80 text-white p-8 rounded text-2xl z-50"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-50"
                 >
-                  {yourPlayer.gameOver !== "" &&
-                  yourPlayer.gameOver === opponentPlayer.gameOver
-                    ? "Draw!"
-                    : gameOver === "win"
-                    ? "You Won!"
-                    : "You Lost!"}
+                  <div className={`bg-gray-900 border-8 ${gameOver === "win" ? "border-yellow-500" : "border-red-700"} p-8 rounded-lg shadow-lg`}>
+                    <div className={`text-center text-3xl font-bold ${gameOver === "win" ? "text-yellow-400" : "text-red-500"}`}>
+                      {yourPlayer.gameOver !== "" &&
+                      yourPlayer.gameOver === opponentPlayer.gameOver
+                        ? "DRAW!"
+                        : gameOver === "win"
+                        ? "YOU WON!"
+                        : "YOU LOST!"}
+                    </div>
+                    {gameOver === "win" && (
+                      <div className="mt-4 flex justify-center">
+                        <div className="text-yellow-300 text-xl">★ ★ ★</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {/* Add a style tag for pixelated font */}
+      <style jsx global>{`
+        .pixelated {
+          image-rendering: pixelated;
+          font-family: monospace;
+          letter-spacing: -1px;
+          text-shadow: 2px 2px 0 #000;
+        }
+      `}</style>
     </>
   );
 }
