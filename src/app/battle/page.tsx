@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import Image from "next/image";
 
 const YOU = {
   health: 500,
@@ -382,7 +383,7 @@ function Battle() {
               <div className="flex-1 flex flex-row w-full relative">
                 {/* Player avatar - Left */}
                 <div className="absolute bottom-[-10%] left-[15%]">
-                  <img 
+                  <Image 
                     src={`/blockmon/${playerBlockmon}.gif`} 
                     alt="Player Blockmon" 
                     className="w-40 h-40 object-contain"
@@ -395,7 +396,7 @@ function Battle() {
                 
                 {/* Opponent avatar - Right */}
                 <div className="absolute bottom-[-10%] right-[15%]">
-                  <img 
+                  <Image 
                     src={`/blockmon/${opponentBlockmon}.gif`} 
                     alt="Opponent Blockmon" 
                     className="w-40 h-40 object-contain"

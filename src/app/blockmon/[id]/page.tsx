@@ -162,7 +162,6 @@ export default function BlockmonDetailsPage() {
   const [evolutionChecked, setEvolutionChecked] = useState(false);
 
   // Get current user's wallet address
-  //
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { address: currentUserAddress } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider("eip155");

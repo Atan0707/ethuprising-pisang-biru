@@ -313,7 +313,7 @@ export default function BattlePage() {
     return () => {
       newSocket.disconnect();
     };
-  }, []);
+  }, [roundCount]);
 
   // Auto-scroll combat log
   useEffect(() => {
