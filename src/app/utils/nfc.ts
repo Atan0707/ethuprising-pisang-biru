@@ -1,7 +1,6 @@
 /**
  * NFC Utility functions for reading and writing to NFC tags
  */
-
 // Define types for Web NFC API
 interface NDEFMessage {
   records: NDEFRecord[];
@@ -42,7 +41,7 @@ const createNDEFReader = (): NDEFReader => {
 };
 
 // Write data to an NFC tag
-export const writeToNfcTag = async (data: string, options?: { overwrite?: boolean }): Promise<boolean> => {
+export const writeToNfcTag = async (data: string, id: string, options?: { overwrite?: boolean }): Promise<boolean> => {
   if (!isNfcSupported()) {
     throw new Error('NFC is not supported on this device or browser');
   }
@@ -52,6 +51,7 @@ export const writeToNfcTag = async (data: string, options?: { overwrite?: boolea
     await ndef.write({
       records: [
         { recordType: "text", data: new TextEncoder().encode(data) },
+        { recordType: "url", data: new TextEncoder().encode(`https://blocknogotchi.fun/blockmon/${id}`) }
       ]
     }, { overwrite: options?.overwrite ?? true });
     return true;

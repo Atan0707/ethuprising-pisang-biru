@@ -9,7 +9,7 @@ import ClaimSuccess from "@/app/components/claim/ClaimSuccess";
 import { toast } from "sonner";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
-
+import { useSearchParams } from "next/navigation";
 
 // Type for event logs
 interface EventLog {
@@ -28,12 +28,32 @@ export default function ClaimPage() {
     image: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessingUrlHash, setIsProcessingUrlHash] = useState(false);
+  const searchParams = useSearchParams();
   // const [debugHash, setDebugHash] = useState<string | null>(null);
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check for hash parameter in URL
+  useEffect(() => {
+    if (mounted && isConnected && !claimResult && !isProcessingUrlHash) {
+      const hashParam = searchParams.get("hash");
+      
+      if (hashParam) {
+        setIsProcessingUrlHash(true);
+        toast.info("Hash Detected", {
+          description: "Found claim hash in URL. Processing your claim...",
+          icon: "🔍",
+        });
+        
+        // Process the hash from URL
+        handleClaim(hashParam);
+      }
+    }
+  }, [mounted, isConnected, searchParams, claimResult, isProcessingUrlHash]);
 
   // Debug function to get the latest claim hash
   // const getLatestClaimHash = async () => {
@@ -113,6 +133,7 @@ export default function ClaimPage() {
   const handleClaim = async (claimHash: string) => {
     if (!isConnected || !address || !walletProvider) {
       setError("Please connect your wallet to claim");
+      setIsProcessingUrlHash(false);
       return;
     }
 
@@ -204,6 +225,8 @@ export default function ClaimPage() {
       setError(
         "Error claiming: " + (err instanceof Error ? err.message : String(err))
       );
+    } finally {
+      setIsProcessingUrlHash(false);
     }
   };
 

@@ -314,6 +314,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
           isOpen={isNfcModalOpen}
           onClose={() => setIsNfcModalOpen(false)}
           claimHash={mintResult.claimHash}
+          walletProvider={walletProvider as Eip1193Provider}
         />
       </div>
     );

@@ -4,14 +4,17 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { writeToNfcTag, isNfcSupported } from '@/app/utils/nfc'
 import { toast } from 'sonner'
+import { hashToId } from "@/app/utils/contractUtils";
+import { Eip1193Provider } from 'ethers';
 
 interface NfcModalProps {
   isOpen: boolean;
   onClose: () => void;
   claimHash: string;
+  walletProvider: Eip1193Provider;
 }
 
-export default function NfcModal({ isOpen, onClose, claimHash }: NfcModalProps) {
+export default function NfcModal({ isOpen, onClose, claimHash, walletProvider }: NfcModalProps) {
   const [isWriting, setIsWriting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +43,8 @@ export default function NfcModal({ isOpen, onClose, claimHash }: NfcModalProps) 
       })
 
       // Write claim hash to NFC tag
-      await writeToNfcTag(claimHash)
+      const id = await hashToId(claimHash, walletProvider)
+      await writeToNfcTag(claimHash, id)
       
       // Dismiss pending toast and show success toast
       toast.dismiss(pendingToastId)
