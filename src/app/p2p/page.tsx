@@ -11,10 +11,80 @@ import { Button } from '@/components/ui/button';
 import { 
   getP2PListingDetails, 
   // P2PListing, 
-  DetailedP2PListing } from '@/app/utils/p2p-swap';
+  DetailedP2PListing,
+  purchaseP2PListing } from '@/app/utils/p2p-swap';
 import { getBlocknogotchiContract } from '../utils/contractUtils';
 import NFCScanner from '@/app/components/p2p/NFCScanner';
 import { Eip1193Provider, ethers } from 'ethers';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// Add BlockmonImage component
+const BlockmonImage = ({ tokenURI, alt }: { tokenURI: string; alt: string }) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      try {
+        // Convert IPFS URL to HTTP URL using Pinata gateway instead of ipfs.io
+        const httpUrl = tokenURI.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
+
+        // Try to fetch and parse as JSON first
+        try {
+          const response = await fetch(httpUrl);
+          const contentType = response.headers.get('content-type');
+          
+          // If it's JSON, parse it and get the image URL
+          if (contentType?.includes('application/json')) {
+            const metadata = await response.json();
+            let imageUrl = metadata.image;
+            if (imageUrl.startsWith('ipfs://')) {
+              imageUrl = imageUrl.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
+            }
+            setImageUrl(imageUrl);
+          } else {
+            // If it's not JSON, assume it's a direct image URL
+            setImageUrl(httpUrl);
+          }
+        } catch {
+          // If parsing as JSON fails, assume it's a direct image URL
+          setImageUrl(httpUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching image:', error);
+        setImageUrl(null);
+      }
+    };
+
+    fetchImage();
+  }, [tokenURI]);
+
+  if (!imageUrl) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-600">
+        <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={imageUrl}
+      alt={alt}
+      width={300}
+      height={300}
+      className="w-full h-full object-cover"
+    />
+  );
+};
 
 export default function P2PSwapPage() {
   const [isScanning, setIsScanning] = useState(false);
@@ -22,6 +92,10 @@ export default function P2PSwapPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nfcHash, setNfcHash] = useState<string>('');
+  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   
   // Use reown wallet integration
@@ -44,6 +118,8 @@ export default function P2PSwapPage() {
     setIsLoading(true);
     setScannedListing(null);
     setError(null);
+    setNfcHash(hash);
+    setNfcSerialNumber(serialNumber);
     
     try {
       // Get the contract instance with signer
@@ -77,6 +153,7 @@ export default function P2PSwapPage() {
       
       if (listing && listing.status === 'active') {
         setScannedListing(listing);
+        setIsModalOpen(true);
         toast.success('Found an active listing!');
       } else if (listing) {
         toast.info(`This NFT is not currently for sale (Status: ${listing.status}).`);
@@ -93,6 +170,50 @@ export default function P2PSwapPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to handle purchasing the NFT
+  const handlePurchase = async () => {
+    if (!isConnected || !walletProvider) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+    
+    if (!scannedListing) {
+      toast.error('Listing details not available');
+      return;
+    }
+    
+    if (!nfcHash) {
+      toast.error('NFC verification required');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    toast.loading('Processing purchase...');
+    
+    try {
+      const success = await purchaseP2PListing(
+        scannedListing.id,
+        scannedListing.price,
+        nfcHash,
+        walletProvider as Eip1193Provider,
+        nfcSerialNumber
+      );
+      
+      if (success) {
+        toast.dismiss();
+        toast.success(`Successfully purchased Blockmon #${scannedListing.id}!`);
+        setIsModalOpen(false);
+        setScannedListing(null);
+      }
+    } catch (error) {
+      console.error('Error purchasing P2P listing:', error);
+      toast.dismiss();
+      toast.error('Failed to purchase NFT');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -182,92 +303,153 @@ export default function P2PSwapPage() {
           </div>
         )}
 
-        {scannedListing && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Found NFT Listing</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                This physical NFT card is available for purchase
-              </p>
-            </div>
-            
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row gap-8">
-                {/* NFT Image */}
-                <div className="w-full md:w-1/3">
-                  <div className="relative aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                    <Image
-                      src={scannedListing.image}
+        {/* Transaction Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-gray-900 text-white border border-gray-800">
+            {scannedListing && (
+              <>
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-800">
+                  <DialogTitle className="text-xl font-bold text-white">
+                    Blocknogotchi #{scannedListing.id}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-400">
+                    Review the details before purchasing this Blockmon
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="p-6">
+                  {/* NFT Image */}
+                  <div className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden mb-6 max-w-[200px] mx-auto">
+                    <BlockmonImage
+                      tokenURI={scannedListing.rawData?.tokenURI || scannedListing.image}
                       alt={scannedListing.name}
-                      fill
-                      className="object-cover"
                     />
+                  </div>
+                  
+                  {/* NFT Details */}
+                  <div className="space-y-4">
+                    {/* Attribute Badge */}
+                    <div className="flex justify-center mb-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-900 text-blue-200 uppercase">
+                        {scannedListing.attribute}
+                      </span>
+                    </div>
+                    
+                    {/* Main Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">Rarity</p>
+                        <p className="font-medium text-white uppercase">{scannedListing.rarity}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Level</p>
+                        <p className="font-medium text-white">{scannedListing.level}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Seller</p>
+                        <p className="font-medium text-white">{formatAddress(scannedListing.seller)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Price</p>
+                        <p className="font-medium text-white flex items-center">
+                          <Image
+                            src="/eth-logo.svg"
+                            alt="ETH"
+                            width={16}
+                            height={16}
+                            className="mr-1"
+                          />
+                          {scannedListing.price} ETH
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Blocknogotchi Stats */}
+                    <div className="bg-gray-800 rounded-lg p-4 mt-4">
+                      <h3 className="text-sm font-semibold text-white mb-3">Blocknogotchi Stats</h3>
+                      <div className="grid grid-cols-2 gap-y-2">
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">HP:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.hp || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Base Damage:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.baseDamage || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Experience:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.experience || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Birth Time:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.birthTime ? 
+                              new Date(Number(scannedListing.rawData.birthTime) * 1000).toLocaleDateString() : 
+                              'Unknown'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Battle Count:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.battleCount || 0}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Battle Wins:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.battleWins || 0}
+                          </span>
+                        </div>
+
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                {/* NFT Details */}
-                <div className="w-full md:w-2/3">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{scannedListing.name}</h3>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {scannedListing.attribute}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Rarity</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{scannedListing.rarity}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Level</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{scannedListing.level}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Seller</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{formatAddress(scannedListing.seller)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Price</p>
-                      <p className="font-medium text-gray-900 dark:text-white flex items-center">
-                        <Image
-                          src="/eth-logo.svg"
-                          alt="ETH"
-                          width={16}
-                          height={16}
-                          className="mr-1"
-                        />
-                        {scannedListing.price} ETH
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Description</p>
-                    <p className="text-gray-700 dark:text-gray-300">{scannedListing.description}</p>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <Button
-                      onClick={() => router.push(`/p2p-swap/${scannedListing.id}`)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-                    >
-                      View Details
-                    </Button>
-                    
-                    <Button
-                      onClick={() => router.push(`/p2p/${scannedListing.id}`)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
-                    >
-                      Buy Now
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                <DialogFooter className="px-6 py-4 border-t border-gray-800 flex justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-gray-300 border-gray-700 hover:bg-gray-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handlePurchase}
+                    disabled={isSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isSubmitting ? 'Processing...' : `Buy for ${scannedListing.price} ETH`}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
-} 
+}
