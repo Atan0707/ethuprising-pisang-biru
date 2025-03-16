@@ -158,6 +158,8 @@ export default function BlockmonDetailsPage() {
   const [canEvolve, setCanEvolve] = useState(false);
   const [evolving, setEvolving] = useState(false);
   const [showEvolveModal, setShowEvolveModal] = useState(false);
+  const [checkingEvolution, setCheckingEvolution] = useState(false);
+  const [evolutionChecked, setEvolutionChecked] = useState(false);
 
   // Get current user's wallet address
   //
@@ -232,8 +234,8 @@ export default function BlockmonDetailsPage() {
 
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching Blockmon data:", err);
-        setError("Failed to fetch Blockmon data. Please try again later.");
+        console.error("Error fetching Blocknogotchi data:", err);
+        setError("Failed to fetch Blocknogotchi data. Please try again later.");
         setLoading(false);
       }
     };
@@ -298,13 +300,13 @@ export default function BlockmonDetailsPage() {
           // @ts-expect-error - NDEFReader might not be recognized by TypeScript
           const ndef = new window.NDEFReader();
           await ndef.write({
-            records: [{ recordType: "text", data: `blockmon-hash:${claimHash}` }],
+            records: [{ recordType: "text", data: `blocknogotchi-hash:${claimHash}` }],
           });
           return true;
         })(),
         {
-          loading: "Tap your NFC card to write Blockmon data...",
-          success: "Successfully wrote Blockmon data to NFC card!",
+          loading: "Tap your NFC card to write Blocknogotchi data...",
+          success: "Successfully wrote Blocknogotchi data to NFC card!",
           error: "Failed to write to NFC card. Please try again.",
         }
       );
@@ -319,6 +321,42 @@ export default function BlockmonDetailsPage() {
   // Function to handle opening the evolution modal
   const openEvolveModal = () => {
     setShowEvolveModal(true);
+  };
+
+  // Function to handle checking evolution
+  const handleCheckEvolution = async () => {
+    if (!tokenId || !walletProvider) return;
+
+    try {
+      setCheckingEvolution(true);
+      
+      // Get provider
+      const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      // Create contract instance with signer
+      const contract = new ethers.Contract(
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        Blocknogotchi.abi,
+        signer
+      );
+
+      // Check if the Blockmon can evolve
+      const canEvolveResult = await contract.checkEvolution(tokenId);
+      setCanEvolve(canEvolveResult);
+      setEvolutionChecked(true);
+
+      if (canEvolveResult) {
+        toast.success("Your Blocknogotchi is ready to evolve!");
+      } else {
+        toast.error("Your Blocknogotchi is not ready to evolve yet.");
+      }
+    } catch (error) {
+      console.error("Error checking evolution:", error);
+      toast.error("Failed to check evolution status. Please try again.");
+    } finally {
+      setCheckingEvolution(false);
+    }
   };
 
   // Function to handle evolution
@@ -364,20 +402,20 @@ export default function BlockmonDetailsPage() {
       toast.promise(
         tx.wait(),
         {
-          loading: "Evolving your Blockmon...",
+          loading: "Evolving your Blocknogotchi...",
           success: () => {
-            // Refresh the Blockmon data after evolution
+            // Refresh the Blocknogotchi data after evolution
             setTimeout(() => {
               window.location.reload();
             }, 2000);
-            return "Your Blockmon has evolved successfully!";
+            return "Your Blocknogotchi has evolved successfully!";
           },
-          error: "Failed to evolve your Blockmon. Please try again.",
+          error: "Failed to evolve your Blocknogotchi. Please try again.",
         }
       );
     } catch (error) {
-      console.error("Error evolving Blockmon:", error);
-      toast.error("Failed to evolve your Blockmon. Please try again.");
+      console.error("Error evolving Blocknogotchi:", error);
+      toast.error("Failed to evolve your Blocknogotchi. Please try again.");
     } finally {
       setEvolving(false);
       setShowEvolveModal(false);
@@ -389,7 +427,7 @@ export default function BlockmonDetailsPage() {
       <div className="container mx-auto px-4 py-16 flex justify-center items-center min-h-screen">
         <div className="animate-bounce text-4xl">
           <span className="inline-block animate-spin">🎮</span>
-          <span className="ml-4">Loading Blockmon...</span>
+          <span className="ml-4">Loading Blocknogotchi...</span>
         </div>
       </div>
     );
@@ -425,7 +463,7 @@ export default function BlockmonDetailsPage() {
           <strong className="font-bold">Not Found!</strong>
           <span className="block sm:inline">
             {" "}
-            Blockmon #{tokenId} not found.
+            Blocknogotchi #{tokenId} not found.
           </span>
         </div>
         <Link
@@ -586,39 +624,117 @@ export default function BlockmonDetailsPage() {
                 </button>
               )}
               
-              {/* Evolution Button - Only show if current user is the owner and Blockmon can evolve */}
-              {isOwner && canEvolve && blockmonData.rarity < 4 && (
-                <button
-                  onClick={openEvolveModal}
-                  disabled={evolving}
-                  className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
-                >
-                  {evolving ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Evolving...
-                    </>
+              {/* Evolution Button Section - Only show if current user is the owner */}
+              {isOwner && blockmonData.rarity < 4 && (
+                <>
+                  {!evolutionChecked ? (
+                    <button
+                      onClick={handleCheckEvolution}
+                      disabled={checkingEvolution}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+                    >
+                      {checkingEvolution ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Checking Evolution...
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                          Check Evolution
+                        </>
+                      )}
+                    </button>
+                  ) : canEvolve ? (
+                    <button
+                      onClick={openEvolveModal}
+                      disabled={evolving}
+                      className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+                    >
+                      {evolving ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Evolving...
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                            />
+                          </svg>
+                          Evolve Blocknogotchi
+                        </>
+                      )}
+                    </button>
                   ) : (
-                    <>
+                    <button
+                      onClick={() => {
+                        setEvolutionChecked(false);
+                        setCanEvolve(false);
+                      }}
+                      className="px-6 py-3 bg-amber-950 hover:bg-gray-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-5 w-5 mr-2"
@@ -630,13 +746,13 @@ export default function BlockmonDetailsPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                         />
                       </svg>
-                      Evolve Blockmon
-                    </>
+                      Check Again
+                    </button>
                   )}
-                </button>
+                </>
               )}
             </div>
           </div>

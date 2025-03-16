@@ -87,6 +87,9 @@ interface GraphQLListing {
   buyer?: string;
 }
 
+// Add this constant at the top with other imports
+const PINATA_GATEWAY = 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/';
+
 /**
  * Get a signer for the current user
  */
@@ -244,26 +247,29 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
       
       try {
         // Get Blockmon data from the contract
-        const blockmonData = await blockmonContract.getBlockmon(tokenId);
+        const blockmonData = await blockmonContract.getBlocknogotchi(tokenId);
         
         // Get token URI and fetch metadata if available
         let name = `Blockmon #${tokenId}`;
         let image = `/blockmon/default.png`;
         
         try {
-          const tokenURI = await blockmonContract.tokenURI(tokenId);
+          const tokenURI = blockmonData.tokenURI;
           if (tokenURI) {
-            // If the tokenURI is an IPFS URI, convert it to a gateway URL
-            const formattedURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            // Convert IPFS URI to Pinata gateway URL
+            const formattedURI = tokenURI.replace('ipfs://', PINATA_GATEWAY);
             const metadataResponse = await fetch(formattedURI);
             const metadata = await metadataResponse.json();
             
             name = metadata.name || name;
             image = metadata.image || image;
             
-            // If the image is an IPFS URI, convert it to a gateway URL
+            // Handle different IPFS URL formats
             if (image.startsWith('ipfs://')) {
-              image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+              image = image.replace('ipfs://', PINATA_GATEWAY);
+            } else if (image.includes('/ipfs/')) {
+              const cid = image.split('/ipfs/')[1];
+              image = `${PINATA_GATEWAY}${cid}`;
             }
           }
         } catch (error) {
@@ -277,9 +283,9 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
           image,
           price: ethers.formatEther(listing.price),
           seller: listing.seller,
-          attribute: blockmonData.attribute,
-          rarity: blockmonData.rarity,
-          level: blockmonData.level,
+          attribute: Number(blockmonData.attribute),
+          rarity: Number(blockmonData.rarity),
+          level: Number(blockmonData.level),
           status: 'active' as const
         };
       } catch (error) {
@@ -316,10 +322,10 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
 
     // Create a provider to interact with the blockchain
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
+    const blocknogotchiContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
     
     // Get Blockmon data from the contract
-    const blockmonData = await blockmonContract.getBlockmon(tokenId);
+    const blockmonData = await blocknogotchiContract.getBlocknogotchi(tokenId);
     
     // Get token URI and fetch metadata if available
     let name = `Blockmon #${tokenId}`;
@@ -327,10 +333,10 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
     let description = "A mysterious Blockmon.";
     
     try {
-      const tokenURI = await blockmonContract.tokenURI(tokenId);
+      const tokenURI = blockmonData.tokenURI;
       if (tokenURI) {
-        // If the tokenURI is an IPFS URI, convert it to a gateway URL
-        const formattedURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+        // Convert IPFS URI to Pinata gateway URL
+        const formattedURI = tokenURI.replace('ipfs://', PINATA_GATEWAY);
         const metadataResponse = await fetch(formattedURI);
         const metadata = await metadataResponse.json();
         
@@ -338,9 +344,12 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
         image = metadata.image || image;
         description = metadata.description || description;
         
-        // If the image is an IPFS URI, convert it to a gateway URL
+        // Handle different IPFS URL formats
         if (image.startsWith('ipfs://')) {
-          image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+          image = image.replace('ipfs://', PINATA_GATEWAY);
+        } else if (image.includes('/ipfs/')) {
+          const cid = image.split('/ipfs/')[1];
+          image = `${PINATA_GATEWAY}${cid}`;
         }
       }
     } catch (error) {
@@ -419,12 +428,12 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
     if (cancellationEvent) status = 'cancelled';
     if (claimEvent) status = 'claimed';
     
-    // Calculate stats based on blockmon data
+    // Calculate stats based on blockmon data - convert BigInt to number
     const stats = {
-      hp: blockmonData.hp,
-      attack: blockmonData.baseDamage,
-      defense: Math.floor(blockmonData.hp * 0.5), // Example calculation
-      speed: Math.floor(blockmonData.level * 5) // Example calculation
+      hp: Number(blockmonData.hp),
+      attack: Number(blockmonData.baseDamage),
+      defense: Math.floor(Number(blockmonData.hp) * 0.5), // Example calculation
+      speed: Math.floor(Number(blockmonData.level) * 5) // Example calculation
     };
     
     // Create the detailed listing object
@@ -434,29 +443,29 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
       image,
       price: ethers.formatEther(listing.price),
       seller: listing.seller,
-      attribute: getAttributeString(blockmonData.attribute),
-      rarity: getRarityString(blockmonData.rarity),
-      level: blockmonData.level,
+      attribute: getAttributeString(Number(blockmonData.attribute)),
+      rarity: getRarityString(Number(blockmonData.rarity)),
+      level: Number(blockmonData.level),
       description,
       status,
       stats,
       history,
       rawData: {
         name,
-        attribute: blockmonData.attribute,
-        rarity: blockmonData.rarity,
-        level: blockmonData.level,
-        hp: blockmonData.hp,
-        baseDamage: blockmonData.baseDamage,
-        battleCount: blockmonData.battleCount,
-        battleWins: blockmonData.battleWins,
-        birthTime: blockmonData.birthTime,
-        lastBattleTime: blockmonData.lastBattleTime,
+        attribute: Number(blockmonData.attribute),
+        rarity: Number(blockmonData.rarity),
+        level: Number(blockmonData.level),
+        hp: Number(blockmonData.hp),
+        baseDamage: Number(blockmonData.baseDamage),
+        battleCount: Number(blockmonData.battleCount),
+        battleWins: Number(blockmonData.battleWins),
+        birthTime: Number(blockmonData.birthTime),
+        lastBattleTime: Number(blockmonData.lastBattleTime),
         claimed: blockmonData.claimed,
         owner: blockmonData.owner,
-        tokenURI: await blockmonContract.tokenURI(tokenId),
-        age: Math.floor((Date.now() / 1000) - blockmonData.birthTime),
-        experience: blockmonData.level * 100 // Example calculation
+        tokenURI: await blocknogotchiContract.tokenURI(tokenId),
+        age: Math.floor((Date.now() / 1000) - Number(blockmonData.birthTime)),
+        experience: Number(blockmonData.level) * 100 // Example calculation
       }
     };
     

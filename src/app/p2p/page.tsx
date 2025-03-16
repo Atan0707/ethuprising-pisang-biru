@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 // import Link from 'next/link';
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 // import { getAttributeString, getRarityString } from '@/app/utils/marketplace';
@@ -12,55 +12,88 @@ import {
   getP2PListingDetails, 
   // P2PListing, 
   DetailedP2PListing } from '@/app/utils/p2p-swap';
+import { getBlocknogotchiContract } from '../utils/contractUtils';
+import NFCScanner from '@/app/components/p2p/NFCScanner';
+import { Eip1193Provider, ethers } from 'ethers';
 
 export default function P2PSwapPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedListing, setScannedListing] = useState<DetailedP2PListing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   
   // Use reown wallet integration
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
 
-  // Ensure component is mounted to avoid hydration issues
+  // Ensure component is mounted
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Function to simulate NFC scanning
-  const handleScanNFC = async () => {
-    setIsScanning(true);
+  // Function to handle NFC scanning or manual hash input
+  const handleScan = async (hash: string, serialNumber: string) => {
+    if (!isConnected || !walletProvider) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    setIsLoading(true);
     setScannedListing(null);
+    setError(null);
     
-    // Simulate NFC scanning process
-    setTimeout(async () => {
-      try {
-        // For demo purposes, we'll randomly select a token ID between 1 and 10
-        // In a real implementation, you would decode the NFC data to get the token ID
-        const tokenId = Math.floor(Math.random() * 10) + 1;
-        
-        // Fetch the listing details for this token ID
-        setIsLoading(true);
-        const listing = await getP2PListingDetails(tokenId);
-        
-        if (listing && listing.status === 'active') {
-          setScannedListing(listing);
-          toast.success('NFC card scanned successfully! Found an active listing.');
-        } else if (listing) {
-          toast.info(`This NFT is not currently for sale (Status: ${listing.status}).`);
-        } else {
-          toast.info('No active listing found for this NFC card.');
-        }
-      } catch (error) {
-        console.error('Error processing NFC scan:', error);
-        toast.error('Failed to process NFC scan');
-      } finally {
-        setIsScanning(false);
-        setIsLoading(false);
+    try {
+      // Get the contract instance with signer
+      const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
+      const signer = await provider.getSigner();
+      const contract = await getBlocknogotchiContract(signer);
+      
+      // Get token ID from hash
+      const tokenId = await contract.getTokenIdFromHash(hash);
+      console.log('Token ID:', tokenId);
+
+      if (tokenId.toString() === '0') {
+        throw new Error('This NFC card is not associated with any Blockmon');
       }
-    }, 2000);
+
+      // Get Blockmon data to verify it exists
+      const blockmonData = await contract.getBlocknogotchi(tokenId);
+      console.log('Blockmon Data:', blockmonData);
+
+      if (!blockmonData) {
+        throw new Error('Failed to fetch Blockmon data');
+      }
+
+      // Store the serial number for future verification if provided
+      if (serialNumber) {
+        localStorage.setItem(`nft_${tokenId}_serial`, serialNumber);
+      }
+
+      // Fetch the listing details for this token ID
+      const listing = await getP2PListingDetails(tokenId);
+      
+      if (listing && listing.status === 'active') {
+        setScannedListing(listing);
+        toast.success('Found an active listing!');
+      } else if (listing) {
+        toast.info(`This NFT is not currently for sale (Status: ${listing.status}).`);
+      } else {
+        toast.info('No active listing found for this NFT.');
+      }
+    } catch (error) {
+      console.error('Error processing scan:', error);
+      
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to process scan');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Function to handle creating a new P2P swap listing
@@ -117,7 +150,7 @@ export default function P2PSwapPage() {
                   onClick={handleCreateListing}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Sell Physical NFT
+                  Trade Blocknogotchi
                 </Button>
               </div>
             )}
@@ -126,34 +159,22 @@ export default function P2PSwapPage() {
 
         {/* NFC Scan Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-blue-100 dark:bg-blue-900 mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Scan Your Blocknogotchi NFT Card</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              To view or purchase a Blocknogotchi, scan the NFC chip embedded in the card.
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Find Blocknogotchi Listings</h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Scan your NFC card or enter its hash to find available listings.
             </p>
-            <Button
-              onClick={handleScanNFC}
-              disabled={isScanning || isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-lg"
-            >
-              {isScanning ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Scanning...
-                </>
-              ) : (
-                'Scan NFC Card'
-              )}
-            </Button>
           </div>
+          
+          <NFCScanner
+            isScanning={isScanning}
+            setIsScanning={setIsScanning}
+            onScan={handleScan}
+            error={error}
+          />
         </div>
 
-        {/* Scanned Listing Details */}
+        {/* Loading State */}
         {isLoading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -235,7 +256,7 @@ export default function P2PSwapPage() {
                     </Button>
                     
                     <Button
-                      onClick={() => router.push(`/p2p-swap/${scannedListing.id}`)}
+                      onClick={() => router.push(`/p2p/${scannedListing.id}`)}
                       className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
                     >
                       Buy Now
