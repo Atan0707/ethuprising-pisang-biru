@@ -12,8 +12,8 @@ const projectId = "b5afe545e87787c53896449028cc2ad7";
 const metadata = {
   name: "Blocknogotchi",
   description: "Blocknogotchi web application",
-  url: "https://blockmon.vercel.app/", // origin must match your domain & subdomain
-  icons: ["https://avatars.mywebsite.com/"],
+  url: "https://blocknogotchi.fun/", // origin must match your domain & subdomain
+  icons: ["https://blocknogotchi.fun/favicon.ico"], // Updated to use your favicon
 };
 
 // 3. Create the AppKit instance
