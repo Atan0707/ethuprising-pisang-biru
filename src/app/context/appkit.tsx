@@ -4,14 +4,15 @@ import { createAppKit } from "@reown/appkit/react";
 import { EthersAdapter } from "@reown/appkit-adapter-ethers";
 import { useEffect, useState } from "react";
 import { scrollSepolia } from "wagmi/chains";
+import { WALLETCONNECT_PROJECT_ID } from "../utils/config";
 
 // 1. Get projectId at https://cloud.reown.com
-const projectId = "b5afe545e87787c53896449028cc2ad7";
+const projectId = WALLETCONNECT_PROJECT_ID;
 
 // 2. Create a metadata object
 const metadata = {
   name: "Blocknogotchi",
-  description: "Blocknogotchi web application",
+  description: "Blocknogotchi",
   url: "https://blocknogotchi.fun/", // origin must match your domain & subdomain
   icons: ["https://blocknogotchi.fun/favicon.ico"], // Updated to use your favicon
 };
