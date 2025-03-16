@@ -158,6 +158,12 @@ export interface BlockmonData {
   attribute: number;
   rarity: number;
   level: number;
+  hp?: number;
+  baseDamage?: number;
+  battleCount?: number;
+  battleWins?: number;
+  birthTime?: number;
+  lastBattleTime?: number;
   owner: string;
   tokenURI: string;
   claimed: boolean;

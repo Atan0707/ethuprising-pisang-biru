@@ -20,8 +20,8 @@ const BlockmonImage = ({ tokenURI, alt }: { tokenURI: string; alt: string }) => 
   useEffect(() => {
     const fetchImage = async () => {
       try {
-        // Convert IPFS URL to HTTP URL if needed
-        const httpUrl = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+        // Convert IPFS URL to HTTP URL using Pinata gateway instead of ipfs.io
+        const httpUrl = tokenURI.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
 
         // Try to fetch and parse as JSON first
         try {
@@ -33,7 +33,7 @@ const BlockmonImage = ({ tokenURI, alt }: { tokenURI: string; alt: string }) => 
             const metadata = await response.json();
             let imageUrl = metadata.image;
             if (imageUrl.startsWith('ipfs://')) {
-              imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+              imageUrl = imageUrl.replace('ipfs://', 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/');
             }
             setImageUrl(imageUrl);
           } else {
@@ -84,6 +84,7 @@ export default function CreateP2PListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const router = useRouter();
   
   // Use reown wallet integration
@@ -133,6 +134,12 @@ export default function CreateP2PListingPage() {
         attribute: Number(blockmonData[1]),
         rarity: Number(blockmonData[2]),
         level: Number(blockmonData[3]),
+        hp: Number(blockmonData[4]),
+        baseDamage: Number(blockmonData[5]),
+        battleCount: Number(blockmonData[6]),
+        battleWins: Number(blockmonData[7]),
+        birthTime: Number(blockmonData[8]),
+        lastBattleTime: Number(blockmonData[9]),
         owner: blockmonData[11],
         tokenURI: blockmonData[12],
         claimed: blockmonData[10]
@@ -143,6 +150,9 @@ export default function CreateP2PListingPage() {
       setNfcSerialNumber(serialNumber);
       setNfcVerified(true);
       setError(null);
+      
+      // Show the details modal
+      setShowDetailsModal(true);
       
       toast.success('NFC card verified successfully!', {
         description: `Found Blocknogotchi: ${nft.name} #${nft.id}`,
@@ -167,6 +177,16 @@ export default function CreateP2PListingPage() {
     if (/^\d*\.?\d*$/.test(value)) {
       setPrice(value);
     }
+  };
+
+  // Function to set a preset price
+  const setPresetPrice = (presetPrice: string) => {
+    setPrice(presetPrice);
+  };
+
+  // Function to close the details modal
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
   };
 
   // Function to handle form submission
@@ -226,6 +246,7 @@ export default function CreateP2PListingPage() {
       }
     } finally {
       setIsSubmitting(false);
+      setShowDetailsModal(false);
     }
   };
 
@@ -292,10 +313,10 @@ export default function CreateP2PListingPage() {
             </p>
           </div>
           
-          <form onSubmit={handleSubmit} className="p-6">
+          <div className="p-6">
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Step 1: Scan Your Physical Card
+                Scan Your Physical Card
               </label>
               <NFCScanner
                 isScanning={isScanning}
@@ -306,98 +327,205 @@ export default function CreateP2PListingPage() {
             </div>
             
             {nfcVerified && selectedNFT && (
-              <>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Verified Blockmon Details
-                  </label>
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="w-full md:w-1/3">
-                        <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-600">
-                          <BlockmonImage
-                            tokenURI={selectedNFT.tokenURI}
-                            alt={`${selectedNFT.name} #${selectedNFT.id}`}
-                          />
-                        </div>
-                      </div>
-                      <div className="w-full md:w-2/3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                            <p className="font-medium text-gray-900 dark:text-white">{selectedNFT.name} #{selectedNFT.id}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Level</p>
-                            <p className="font-medium text-gray-900 dark:text-white">{selectedNFT.level}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Rarity</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'][selectedNFT.rarity]}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Attribute</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {['Fire', 'Water', 'Earth', 'Air'][selectedNFT.attribute]}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+              <div className="mb-6">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                        Blockmon verified: {selectedNFT.name} #{selectedNFT.id}
+                      </p>
+                    </div>
+                    <div className="ml-auto pl-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowDetailsModal(true)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-800 dark:text-green-100 dark:hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        View Details & List
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Step 2: Set Price (ETH)
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Image
-                        src="/eth-logo.svg"
-                        alt="ETH"
-                        width={16}
-                        height={16}
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      name="price"
-                      id="price"
-                      className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
-                      placeholder="0.00"
-                      value={price}
-                      onChange={handlePriceChange}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 dark:text-gray-400 sm:text-sm">ETH</span>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Platform fee: 2% of the sale price
-                  </p>
-                </div>
-              </>
+              </div>
             )}
-            
-            <div className="mt-8">
-              <Button
-                type="submit"
-                disabled={isSubmitting || !selectedNFT || !nfcVerified || !price || parseFloat(price) <= 0}
-                className={`w-full ${
-                  selectedNFT && nfcVerified && price && parseFloat(price) > 0
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {isSubmitting ? 'Creating Listing...' : 'Create P2P Listing'}
-              </Button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
+
+      {/* Blockmon Details Modal */}
+      {showDetailsModal && selectedNFT && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full overflow-hidden">
+            <div className="relative">
+              <button 
+                onClick={closeDetailsModal}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Create P2P Listing</h3>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="p-6">
+                <div className="flex flex-col md:flex-row gap-6 mb-6">
+                  <div className="w-full md:w-1/3">
+                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-600 mb-2">
+                      <BlockmonImage
+                        tokenURI={selectedNFT.tokenURI}
+                        alt={`${selectedNFT.name} #${selectedNFT.id}`}
+                      />
+                    </div>
+                    <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white">{selectedNFT.name} #{selectedNFT.id}</h2>
+                    <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                      Level {selectedNFT.level} • {['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'][selectedNFT.rarity] || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  <div className="w-full md:w-2/3">
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Battle Count</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{selectedNFT.battleCount || 0}</p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Battle Wins</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{selectedNFT.battleWins || 0}</p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Birth Time</p>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {selectedNFT.birthTime ? new Date(selectedNFT.birthTime * 1000).toLocaleDateString() : 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Last Battle</p>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {selectedNFT.lastBattleTime && selectedNFT.lastBattleTime > 0 
+                            ? new Date(selectedNFT.lastBattleTime * 1000).toLocaleDateString() 
+                            : 'Never battled'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Set Price (ETH)
+                      </label>
+                      
+                      {/* Preset price buttons */}
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setPresetPrice('0.25')}
+                          className={`px-3 py-2 text-sm font-medium rounded-md ${
+                            price === '0.25' 
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-700' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          0.25 ETH
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPresetPrice('0.5')}
+                          className={`px-3 py-2 text-sm font-medium rounded-md ${
+                            price === '0.5' 
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-700' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          0.5 ETH
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPresetPrice('0.75')}
+                          className={`px-3 py-2 text-sm font-medium rounded-md ${
+                            price === '0.75' 
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-700' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          0.75 ETH
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPresetPrice('1')}
+                          className={`px-3 py-2 text-sm font-medium rounded-md ${
+                            price === '1' 
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-700' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          1 ETH
+                        </button>
+                      </div>
+                      
+                      {/* Custom price input */}
+                      <div className="relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Image
+                            src="/eth-logo.svg"
+                            alt="ETH"
+                            width={16}
+                            height={16}
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          name="price"
+                          id="price"
+                          className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                          placeholder="Custom price"
+                          value={price}
+                          onChange={handlePriceChange}
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 dark:text-gray-400 sm:text-sm">ETH</span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Platform fee: 2% of the sale price
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={closeDetailsModal}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !price || parseFloat(price) <= 0}
+                    className={`${
+                      price && parseFloat(price) > 0
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isSubmitting ? 'Creating Listing...' : 'Create P2P Listing'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

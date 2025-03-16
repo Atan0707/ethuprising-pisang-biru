@@ -124,7 +124,7 @@ export default function Navbar() {
               </span>
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-4">
-              <Link
+              {/* <Link
                 href="/mint"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive("/mint")
@@ -133,7 +133,7 @@ export default function Navbar() {
                 }`}
               >
                 Mint
-              </Link>
+              </Link> */}
               <Link
                 href="/claim"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
