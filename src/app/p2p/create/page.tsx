@@ -10,7 +10,7 @@ import { createP2PListing } from '@/app/utils/p2p-swap';
 import { BlockmonData } from '@/app/utils/marketplace';
 import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc';
 import { Button } from '@/components/ui/button';
-import BlockmonABI from '@/contract/Blockmon.json';
+import Blocknogotchi from '@/contract/BlocknogotchiContract.json';
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from '@/app/utils/config';
 
 
@@ -78,14 +78,16 @@ export default function CreateP2PListingPage() {
       // Get the contract instance to find the token ID from the hash
       const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+      const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, signer);
       
       // Get token ID from claim hash
-      const tokenId = await contract.hashToToken(hash);
+      const tokenId = await contract.getTokenIdFromHash(hash);
       
       if (tokenId.toString() === '0') {
         throw new Error('This NFC card is not associated with any Blockmon');
       }
+
+
       
       // Get Blockmon data to verify ownership
       const blockmonData = await contract.getBlocknogotchi(tokenId);
@@ -111,7 +113,7 @@ export default function CreateP2PListingPage() {
       setNfcVerified(true);
       toast.dismiss(toastId);
       toast.success('NFC card scanned and verified successfully!', {
-        description: `Found Blockmon: ${nft.name} #${nft.id}`,
+        description: `Found Blocknogotchi: ${nft.name} #${nft.id}`,
       });
     } catch (error) {
       console.error('Error scanning NFC card:', error);

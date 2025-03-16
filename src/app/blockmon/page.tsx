@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getBlocknogotchiContract } from '../utils/contractUtils';
 
 interface NFCReadingStatus {
   status: 'idle' | 'reading' | 'success' | 'error';
@@ -39,18 +40,20 @@ export default function BlockmonScanPage() {
       
       await ndef.scan();
       
-      ndef.addEventListener("reading", ({ message }: { message: { records: NDEFRecord[] } }) => {
+      ndef.addEventListener("reading", async ({ message }: { message: { records: NDEFRecord[] } }) => {
         try {
           // Process NDEF message
           for (const record of message.records) {
             if (record.recordType === "text") {
               const textDecoder = new TextDecoder();
               const text = textDecoder.decode(record.data);
+              console.log('text', text);
               
               // Assuming the text contains the blockmon ID
               // Format could be "blockmon:123" or just "123"
-              const blockmonId = text.includes(':') ? text.split(':')[1] : text;
-              
+              const contract = await getBlocknogotchiContract();
+              const blockmonId = await contract.getTokenIdFromHash(text);
+              console.log('blockmonId', blockmonId);
               setScannedId(blockmonId);
               setReadingStatus({ 
                 status: 'success', 

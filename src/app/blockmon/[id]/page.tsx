@@ -5,14 +5,14 @@ import { useParams } from "next/navigation";
 import { useQuery, gql } from "@apollo/client";
 import Link from "next/link";
 import Image from "next/image";
-import { ethers } from "ethers";
-import BlockmonABI from "@/contract/Blockmon.json";
+import { ethers, Eip1193Provider } from "ethers";
+import Blocknogotchi from "@/contract/BlocknogotchiContract.json";
 import { toast } from "sonner";
-import { useAppKitAccount } from "@reown/appkit/react";
+import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
-// GraphQL query to get Blockmon battle data
-const GET_BLOCKMON_BATTLES = gql`
-  query GetBlockmonBattles($tokenId: String!) {
+// GraphQL query to get Blocknogotchi battle data
+const GET_BLOCKNOGOTCHI_BATTLES = gql`
+  query GetBlocknogotchiBattles($tokenId: String!) {
     battleCompleteds(
       where: { tokenId: $tokenId }
       first: 100
@@ -29,10 +29,10 @@ const GET_BLOCKMON_BATTLES = gql`
   }
 `;
 
-// GraphQL query to get Blockmon level data
-const GET_BLOCKMON_LEVELS = gql`
-  query GetBlockmonLevels($tokenId: String!) {
-    pokemonLeveledUps(
+// GraphQL query to get Blocknogotchi level data
+const GET_BLOCKNOGOTCHI_LEVELS = gql`
+  query GetBlocknogotchiLevels($tokenId: String!) {
+    blocknogotchiLeveledUps(
       where: { tokenId: $tokenId }
       first: 100
       orderBy: blockTimestamp
@@ -47,10 +47,10 @@ const GET_BLOCKMON_LEVELS = gql`
   }
 `;
 
-// GraphQL query to get Blockmon creation data
-const GET_BLOCKMON_CREATED = gql`
-  query GetBlockmonCreated($tokenId: String!) {
-    pokemonCreateds(where: { tokenId: $tokenId }, first: 1) {
+// GraphQL query to get Blocknogotchi creation data
+const GET_BLOCKNOGOTCHI_CREATED = gql`
+  query GetBlocknogotchiCreated($tokenId: String!) {
+    blocknogotchiCreateds(where: { tokenId: $tokenId }, first: 1) {
       id
       tokenId
       owner
@@ -154,22 +154,29 @@ export default function BlockmonDetailsPage() {
   );
   const [nfcWriting, setNfcWriting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Add state for evolution
+  const [canEvolve, setCanEvolve] = useState(false);
+  const [evolving, setEvolving] = useState(false);
+  const [showEvolveModal, setShowEvolveModal] = useState(false);
 
   // Get current user's wallet address
-  const { address: currentUserAddress, isConnected } = useAppKitAccount();
+  //
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { address: currentUserAddress } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
 
-  const { data: battleData } = useQuery(GET_BLOCKMON_BATTLES, {
+  const { data: battleData } = useQuery(GET_BLOCKNOGOTCHI_BATTLES, {
     variables: { tokenId },
     skip: !tokenId,
   });
 
-  const { data: levelData } = useQuery(GET_BLOCKMON_LEVELS, {
+  const { data: levelData } = useQuery(GET_BLOCKNOGOTCHI_LEVELS, {
     variables: { tokenId },
     skip: !tokenId,
   });
 
   // We're not using this data directly, but keeping the query for future reference
-  useQuery(GET_BLOCKMON_CREATED, {
+  useQuery(GET_BLOCKNOGOTCHI_CREATED, {
     variables: { tokenId },
     skip: !tokenId,
   });
@@ -190,14 +197,14 @@ export default function BlockmonDetailsPage() {
         // Create contract instance
         const contract = new ethers.Contract(
           contractAddress,
-          BlockmonABI.abi,
+          Blocknogotchi.abi,
           provider
         );
 
         // Call getPokemon function
-        const data = await contract.getPokemon(tokenId);
+        const data = await contract.getBlocknogotchi(tokenId);
 
-        setBlockmonData({
+        const blockmonInfo = {
           name: data[0],
           attribute: Number(data[1]),
           rarity: Number(data[2]),
@@ -213,7 +220,15 @@ export default function BlockmonDetailsPage() {
           tokenURI: data[12],
           age: Number(data[13]),
           experience: Number(data[14]),
-        });
+        };
+
+        setBlockmonData(blockmonInfo);
+
+        // Check if the Blockmon can evolve
+        if (blockmonInfo.claimed) {
+          const canEvolveResult = await contract.checkEvolution(tokenId);
+          setCanEvolve(canEvolveResult);
+        }
 
         setLoading(false);
       } catch (err) {
@@ -234,12 +249,9 @@ export default function BlockmonDetailsPage() {
   }, []);
 
   // Check if current user is the owner of the Blockmon
-  const isOwner =
-    mounted &&
-    isConnected &&
-    currentUserAddress &&
-    blockmonData?.owner &&
+  const isOwner = blockmonData && currentUserAddress && 
     currentUserAddress.toLowerCase() === blockmonData.owner.toLowerCase();
+  // const isOwner = true;
 
   // Function to handle writing to NFC
   const handleWriteToNFC = async () => {
@@ -255,12 +267,38 @@ export default function BlockmonDetailsPage() {
         return;
       }
 
+      // Connect to the Scroll Sepolia network
+      const provider = new ethers.JsonRpcProvider(
+        "https://sepolia-rpc.scroll.io/"
+      );
+
+      // Create contract instance
+      const contract = new ethers.Contract(
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        Blocknogotchi.abi,
+        provider
+      );
+
+      // Get the claim hash for this token ID
+      // Note: This function is restricted to the contract owner in the smart contract
+      // This will only work if the frontend is being used by the contract owner
+      let claimHash;
+      try {
+        claimHash = await contract.getClaimHash(tokenId);
+        console.log("Claim hash:", claimHash);
+      } catch (err) {
+        console.error("Error fetching claim hash:", err);
+        toast.error("Failed to fetch claim hash. Only contract owner can access this.");
+        setNfcWriting(false);
+        return;
+      }
+
       toast.promise(
         (async () => {
           // @ts-expect-error - NDEFReader might not be recognized by TypeScript
           const ndef = new window.NDEFReader();
           await ndef.write({
-            records: [{ recordType: "text", data: `blockmon-id:${tokenId}` }],
+            records: [{ recordType: "text", data: `blockmon-hash:${claimHash}` }],
           });
           return true;
         })(),
@@ -278,7 +316,75 @@ export default function BlockmonDetailsPage() {
     }
   };
 
-  if (loading) {
+  // Function to handle opening the evolution modal
+  const openEvolveModal = () => {
+    setShowEvolveModal(true);
+  };
+
+  // Function to handle evolution
+  const handleEvolve = async () => {
+    if (!tokenId || !walletProvider) return;
+
+    try {
+      setEvolving(true);
+      
+      // Get signer from wallet provider
+      const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      // Create contract instance with signer
+      const contract = new ethers.Contract(
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        Blocknogotchi.abi,
+        signer
+      );
+
+      // Determine the new URI and name based on the Blockmon's name
+      let newURI = blockmonData?.tokenURI || "";
+      let evolvedName = "";
+      
+      // Apply specific evolution rules
+      if (blockmonData?.name === "Marisoul") {
+        // Marisoul evolves to Aquavaria with a specific URI
+        newURI = "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeib26y36zajuenlo6gm6cbpcw4h6czq4gx3panlhrvo6av3hafkhtu";
+        evolvedName = "Aquavaria";
+      } else if (blockmonData?.name === "Duskveil") {
+        // Duskveil evolves to Nocturnyx with a specific URI
+        newURI = "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeidyq7s7u35aowcjr5fe27nq6glfdp7u52wsl7uwdgo2fuwfvinbw4";
+        evolvedName = "Nocturnyx";
+      } else {
+        // For other Blockmon, keep the same URI and use a generic evolved name
+        evolvedName = `Evolved ${blockmonData?.name}`;
+        // newURI is already set to the original URI
+      }
+
+      // Call the evolve function
+      const tx = await contract.evolve(tokenId, evolvedName, newURI);
+      
+      toast.promise(
+        tx.wait(),
+        {
+          loading: "Evolving your Blockmon...",
+          success: () => {
+            // Refresh the Blockmon data after evolution
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+            return "Your Blockmon has evolved successfully!";
+          },
+          error: "Failed to evolve your Blockmon. Please try again.",
+        }
+      );
+    } catch (error) {
+      console.error("Error evolving Blockmon:", error);
+      toast.error("Failed to evolve your Blockmon. Please try again.");
+    } finally {
+      setEvolving(false);
+      setShowEvolveModal(false);
+    }
+  };
+
+  if (!mounted || loading) {
     return (
       <div className="container mx-auto px-4 py-16 flex justify-center items-center min-h-screen">
         <div className="animate-bounce text-4xl">
@@ -426,58 +532,113 @@ export default function BlockmonDetailsPage() {
               </div>
             </div>
 
-            {/* NFC Write Button - Only show if current user is the owner */}
-            {isOwner && (
-              <button
-                onClick={handleWriteToNFC}
-                disabled={nfcWriting}
-                className="mt-4 md:mt-0 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
-              >
-                {nfcWriting ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
+            <div className="mt-4 md:mt-0 flex flex-col gap-2">
+              {/* NFC Write Button - Only show if current user is the owner */}
+              {isOwner && (
+                <button
+                  onClick={handleWriteToNFC}
+                  disabled={nfcWriting}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+                >
+                  {nfcWriting ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Writing...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
                         stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Writing...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    Write to NFC
-                  </>
-                )}
-              </button>
-            )}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                      Write to NFC
+                    </>
+                  )}
+                </button>
+              )}
+              
+              {/* Evolution Button - Only show if current user is the owner and Blockmon can evolve */}
+              {isOwner && canEvolve && blockmonData.rarity < 4 && (
+                <button
+                  onClick={openEvolveModal}
+                  disabled={evolving}
+                  className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg shadow-md transition-colors duration-200 flex items-center"
+                >
+                  {evolving ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Evolving...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                        />
+                      </svg>
+                      Evolve Blockmon
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -734,7 +895,7 @@ export default function BlockmonDetailsPage() {
               <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
                 Level History
               </h3>
-              {levelData?.pokemonLeveledUps?.length > 0 ? (
+              {levelData?.blocknogotchiLeveledUps?.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
@@ -754,7 +915,7 @@ export default function BlockmonDetailsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {levelData.pokemonLeveledUps.map((level: LevelRecord) => (
+                      {levelData.blocknogotchiLeveledUps.map((level: LevelRecord) => (
                         <tr key={level.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {new Date(
@@ -780,6 +941,126 @@ export default function BlockmonDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Evolution Modal */}
+      {showEvolveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4">Evolve Your Blockmon</h2>
+            
+            {/* Evolution Preview */}
+            <div className="flex items-center justify-center mb-6">
+              {/* Current Form */}
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto rounded-full border-2 border-gray-300 overflow-hidden bg-white flex items-center justify-center">
+                  {blockmonData.tokenURI ? (
+                    <Image
+                      src={blockmonData.tokenURI}
+                      alt={blockmonData.name}
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">{attribute.icon}</span>
+                  )}
+                </div>
+                <p className="mt-2 font-medium">{blockmonData.name}</p>
+              </div>
+              
+              {/* Arrow */}
+              <div className="mx-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </div>
+              
+              {/* Evolved Form */}
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto rounded-full border-2 border-yellow-400 overflow-hidden bg-white flex items-center justify-center">
+                  {blockmonData.name === "Marisoul" ? (
+                    <Image
+                      src="https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeib26y36zajuenlo6gm6cbpcw4h6czq4gx3panlhrvo6av3hafkhtu"
+                      alt="Aquavaria"
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : blockmonData.name === "Duskveil" ? (
+                    <Image
+                      src="https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeidyq7s7u35aowcjr5fe27nq6glfdp7u52wsl7uwdgo2fuwfvinbw4"
+                      alt="Nocturnyx"
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : blockmonData.tokenURI ? (
+                    <Image
+                      src={blockmonData.tokenURI}
+                      alt={`Evolved ${blockmonData.name}`}
+                      width={96}
+                      height={96}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">{attribute.icon}</span>
+                  )}
+                </div>
+                <p className="mt-2 font-medium">
+                  {blockmonData.name === "Marisoul" 
+                    ? "Aquavaria" 
+                    : blockmonData.name === "Duskveil"
+                      ? "Nocturnyx"
+                      : `Evolved ${blockmonData.name}`}
+                </p>
+              </div>
+            </div>
+            
+            <div className="mb-6 text-center">
+              <p className="mb-2">
+                Your Blockmon is ready to evolve from {rarity.name} to{" "}
+                {rarityMap[blockmonData.rarity + 1]?.name}!
+              </p>
+              {blockmonData.name === "Marisoul" && (
+                <p className="font-semibold text-blue-600 text-lg">
+                  Marisoul will evolve into Aquavaria!
+                </p>
+              )}
+              {blockmonData.name === "Duskveil" && (
+                <p className="font-semibold text-purple-600 text-lg">
+                  Duskveil will evolve into Nocturnyx!
+                </p>
+              )}
+              {blockmonData.name !== "Marisoul" && blockmonData.name !== "Duskveil" && (
+                <p className="font-semibold text-green-600 text-lg">
+                  {blockmonData.name} will evolve into Evolved {blockmonData.name}!
+                </p>
+              )}
+              <p className="mt-2">
+                This will increase its stats and make it stronger.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowEvolveModal(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEvolve}
+                disabled={evolving}
+                className={`px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 ${
+                  evolving ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {evolving ? "Evolving..." : "Evolve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

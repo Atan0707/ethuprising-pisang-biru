@@ -3,41 +3,52 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Eip1193Provider, ethers } from "ethers";
-import Blockmon from "@/contract/Blockmon.json";
+import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 import { useAppKitProvider } from "@reown/appkit/react";
 import { toast } from "sonner";
 import NfcModal from "./NfcModal";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
-// Pokemon data
-const POKEMON = [
+// Blocknogotchi data
+const BLOCKNOGOTCHI = [
   {
-    name: "Charmander",
+    name: "Ignisoul",
     species: 0, // FIRE
+    rarity: 0,
     image:
-      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreigryiqie52hop6px6afkv4bzixkcxjp5izl2fehcotjnvbmgdpwnq",
+      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeibktq65x4kheyhuxqxjsfhly3lzh5dl232ctsou62edtdxajsfnke",
   },
   {
-    name: "Bulbasaur",
-    species: 2, // PLANT
+    name: "Golethorn",
+    species: 4, // EARTH
+    rarity: 0,
     image:
-      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeig3r7utqwlbhitgphpyfceysntd6ubxjpthpftpf5un5puviktly4",
+      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeic5cnrgetrjom5rrxytz7nnbj3fg4y6ien3tuxv2miybvptsofwoi",
   },
   {
-    name: "Pikachu",
+    name: "Luminox",
     species: 3, // ELECTRIC
+    rarity: 0,
     image:
-      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreiaakfzr3rzenjtre7z6b5fzfhgyobthodphisfvmeu55aqz2b6j2y",
+      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeighjf5oktic5m23plx2ysqlkxypyvfn3qt37vpdtywk35fl2otxtm",
   },
   {
-    name: "Squirtle",
+    name: "Marisoul",
     species: 1, // WATER
+    rarity: 0,
     image:
-      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafybeiaqeil2zo4jkmb7qevmye37yv5wdhen5nns7qmmpw2f4ktkhexepm",
+      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreiatojkw6rnv5ojienpliukyndvdvhnpghia3bzhb4xqn5mejk7ghy",
+  },
+  {
+    name: "Duskveil",
+    species: 7, // DARK
+    rarity: 0,
+    image:
+      "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreie4whaltvx6stlcx37s6a5w76efuy6yw36q37io6xjgy4ayolyiti",
   },
 ];
 
 // Contract ABI 
-const CONTRACT_ABI = Blockmon.abi;
+const CONTRACT_ABI = BlocknogotchiContract.abi;
 
 // Contract address
 const CONTRACT_ADDRESS = BLOCKNOGOTCHI_CONTRACT_ADDRESS;
@@ -54,8 +65,7 @@ interface EventLog {
 }
 
 export default function MintCard({ isAdmin }: MintCardProps) {
-  const [selectedPokemon, setSelectedPokemon] = useState<number | null>(null);
-  const [customName, setCustomName] = useState("");
+  const [selectBlocknogotchi, setSelectBlocknogotchi] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mintResult, setMintResult] = useState<{
     tokenId: string;
@@ -67,17 +77,16 @@ export default function MintCard({ isAdmin }: MintCardProps) {
 
   // Select a random Pokemon
   const selectRandomPokemon = () => {
-    const randomIndex = Math.floor(Math.random() * POKEMON.length);
-    setSelectedPokemon(randomIndex);
-    setCustomName(POKEMON[randomIndex].name);
+    const randomIndex = Math.floor(Math.random() * BLOCKNOGOTCHI.length);
+    setSelectBlocknogotchi(randomIndex);
   };
 
   // Handle mint
   const handleMint = async () => {
-    if (!isAdmin || selectedPokemon === null || !customName.trim()) {
-      setError("Please select a Pokemon and enter a name");
+    if (!isAdmin || selectBlocknogotchi === null ) {
+      setError("Please select a Blocknogotchi");
       toast.error("Mint Error", {
-        description: "Please select a Pokemon and enter a name",
+        description: "Please select a Blocknogotchi",
         icon: "⚠️",
       });
       return;
@@ -108,15 +117,15 @@ export default function MintCard({ isAdmin }: MintCardProps) {
         signer
       );
 
-      const pokemon = POKEMON[selectedPokemon];
+      const blocknogotchi = BLOCKNOGOTCHI[selectBlocknogotchi];
 
-      // Call createPet function (name, species, rarity, uri)
+      // Call createBlocknogotchi function (name, species, rarity, uri)
       // Rarity is set to 0 (COMMON) for all Pokemon as requested
-      const tx = await contract.createPokemon(
-        customName,
-        pokemon.species,
-        0, // COMMON rarity
-        pokemon.image
+      const tx = await contract.createBlocknogotchi(
+        blocknogotchi.name,
+        blocknogotchi.species,
+        blocknogotchi.rarity,
+        blocknogotchi.image
       );
 
       // Show transaction submitted toast
@@ -133,14 +142,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
       // Wait for transaction to be mined
       const receipt = await tx.wait();
 
-      // Show transaction confirmed toast
-      toast.dismiss(submittedToastId);
-      toast.success("Mint Successful", {
-        description: `${customName} has been created! You can now store the claim hash in an NFC card.`,
-        icon: "🎉",
-      });
-
-      // Parse the event to get tokenId and claimHash
+      // Get the token ID from the BlocknogotchiCreated event
       const event = receipt.logs
         .map((log: unknown) => {
           try {
@@ -152,17 +154,43 @@ export default function MintCard({ isAdmin }: MintCardProps) {
           }
         })
         .find(
-          (event: EventLog | null) => event && event.name === "PokemonCreated"
+          (event: EventLog | null) => event && event.name === "BlocknogotchiCreated"
         );
 
-      if (event && event.args) {
-        const tokenId = event.args[0].toString();
-        const claimHash = event.args[1];
+      // Show transaction confirmed toast
+      toast.dismiss(submittedToastId);
 
-        setMintResult({
-          tokenId,
-          claimHash,
+      if (event && event.args && event.args.length > 0) {
+        const tokenId = event.args[0].toString();
+        
+        try {
+          // Try to get the claim hash from the contract
+          // This assumes there's a public getter for tokenClaimHashes mapping
+          const claimHash = await contract.getClaimHash(tokenId);
+          
+          toast.success("Mint Successful", {
+            description: `${blocknogotchi.name} has been created! You can now store the claim hash in an NFC card.`,
+            icon: "🎉",
+          });
+          
+          setMintResult({
+            tokenId,
+            claimHash,
+          });
+        } catch (err) {
+          console.error("Error getting claim hash:", err);
+          toast.error("Mint Completed, But Error Getting Claim Hash", {
+            description: err instanceof Error ? err.message : String(err),
+            icon: "⚠️",
+          });
+          setError("Error getting claim hash: " + (err instanceof Error ? err.message : String(err)));
+        }
+      } else {
+        toast.error("Mint Error", {
+          description: "Failed to parse transaction receipt",
+          icon: "❌",
         });
+        setError("Failed to parse transaction receipt");
       }
 
       setIsLoading(false);
@@ -217,8 +245,8 @@ export default function MintCard({ isAdmin }: MintCardProps) {
         <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
           <div className="w-48 h-48 relative">
             <Image
-              src={POKEMON[selectedPokemon!].image}
-              alt={customName}
+              src={BLOCKNOGOTCHI[selectBlocknogotchi!].image}
+              alt={BLOCKNOGOTCHI[selectBlocknogotchi!].name}
               fill
               style={{ objectFit: "contain" }}
               className="rounded-lg"
@@ -226,7 +254,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-xl font-bold mb-2">{customName}</h3>
+            <h3 className="text-xl font-bold mb-2">{BLOCKNOGOTCHI[selectBlocknogotchi!].name}</h3>
             <p className="mb-4 text-gray-600 dark:text-gray-300">
               Your new Blocknogotchi has been minted successfully! Store the
               claim hash in an NFC card to allow users to claim this pet.
@@ -273,8 +301,7 @@ export default function MintCard({ isAdmin }: MintCardProps) {
           <button
             onClick={() => {
               setMintResult(null);
-              setSelectedPokemon(null);
-              setCustomName("");
+              setSelectBlocknogotchi(null);
             }}
             className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md"
           >
@@ -298,24 +325,24 @@ export default function MintCard({ isAdmin }: MintCardProps) {
         Create a New Blocknogotchi
       </h2>
 
-      {selectedPokemon === null ? (
+      {selectBlocknogotchi === null ? (
         <div className="text-center mb-8">
           <p className="mb-4">
-            Click the button below to randomly select a Pokemon
+            Click the button below to randomly select a Blocknogotchi
           </p>
           <button
             onClick={selectRandomPokemon}
             className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md"
           >
-            Random Pokemon
+            Random Blocknogotchi
           </button>
         </div>
       ) : (
         <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
           <div className="w-48 h-48 relative">
             <Image
-              src={POKEMON[selectedPokemon].image}
-              alt={POKEMON[selectedPokemon].name}
+              src={BLOCKNOGOTCHI[selectBlocknogotchi].image}
+              alt={BLOCKNOGOTCHI[selectBlocknogotchi].name}
               fill
               style={{ objectFit: "contain" }}
               className="rounded-lg"
@@ -324,18 +351,18 @@ export default function MintCard({ isAdmin }: MintCardProps) {
 
           <div className="flex-1">
             <h3 className="text-xl font-bold mb-2">
-              {POKEMON[selectedPokemon].name}
+              {BLOCKNOGOTCHI[selectBlocknogotchi].name}
             </h3>
             <p className="mb-4 text-gray-600 dark:text-gray-300">
               Species:{" "}
               {
-                ["Fire", "Water", "Plant", "Electric"][
-                  POKEMON[selectedPokemon].species
+                ["Fire", "Water", "Plant", "Electric", "Earth", "Air", "Light", "Dark"][
+                  BLOCKNOGOTCHI[selectBlocknogotchi].species
                 ]
               }
             </p>
 
-            <div className="mb-4">
+            {/* <div className="mb-4">
               <label
                 htmlFor="customName"
                 className="block text-sm font-medium mb-1"
@@ -346,15 +373,15 @@ export default function MintCard({ isAdmin }: MintCardProps) {
                 type="text"
                 id="customName"
                 value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
+                  onChange={(e) => setCustomName(e.target.value)}
                 placeholder="Enter a custom name"
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
               />
-            </div>
+            </div> */}
 
             <div className="flex justify-between">
               <button
-                onClick={() => setSelectedPokemon(null)}
+                onClick={() => setSelectBlocknogotchi(null)}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Choose Another

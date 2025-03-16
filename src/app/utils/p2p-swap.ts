@@ -1,5 +1,5 @@
 import { ethers, Eip1193Provider } from 'ethers';
-import BlockmonABI from '@/contract/Blockmon.json';
+import BlocknogotchiContract from '@/contract/BlocknogotchiContract.json';
 import P2PSwapABI from '@/contract/P2PSwap.json';
 import { ApolloClient, InMemoryCache, HttpLink, gql } from '@apollo/client';
 import { getAttributeString, getRarityString } from './marketplace';
@@ -118,7 +118,7 @@ export const getBlockmonContract = async (signer?: ethers.Signer) => {
     throw new Error('Signer not available');
   }
   
-  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, signer);
+  return new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, signer);
 };
 
 /**
@@ -236,7 +236,7 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
 
     // Create a provider to interact with the blockchain
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
 
     // Fetch details for each active listing
     const listingsPromises = activeListingIds.map(async (tokenId: string) => {
@@ -316,7 +316,7 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
 
     // Create a provider to interact with the blockchain
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlockmonABI.abi, provider);
+    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
     
     // Get Blockmon data from the contract
     const blockmonData = await blockmonContract.getBlockmon(tokenId);

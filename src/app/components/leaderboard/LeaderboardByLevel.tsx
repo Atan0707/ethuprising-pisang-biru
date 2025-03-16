@@ -7,14 +7,14 @@ import Link from 'next/link';
 // GraphQL query to get Pokemon level data and created Pokemon
 const GET_POKEMON_DATA = gql`
   query GetPokemonData {
-    pokemonLeveledUps(first: 1000, orderBy: newLevel, orderDirection: desc) {
+    blocknogotchiLeveledUps(first: 1000, orderBy: newLevel, orderDirection: desc) {
       id
       tokenId
       newLevel
       blockTimestamp
       transactionHash
     }
-    pokemonCreateds(first: 1000) {
+    blocknogotchiCreateds(first: 1000) {
       id
       tokenId
       blockTimestamp
@@ -68,8 +68,8 @@ export default function LeaderboardByLevel() {
   const processedData: Record<string, ProcessedPokemon> = {};
   
   // First, add all created Pokemon with level 0
-  if (data?.pokemonCreateds) {
-    data.pokemonCreateds.forEach((item: PokemonCreated) => {
+  if (data?.blocknogotchiCreateds) {
+    data.blocknogotchiCreateds.forEach((item: PokemonCreated) => {
       const tokenId = item.tokenId;
       processedData[tokenId] = {
         id: item.id,
@@ -82,8 +82,8 @@ export default function LeaderboardByLevel() {
   }
   
   // Then, update with level data for Pokemon that have leveled up
-  if (data?.pokemonLeveledUps) {
-    data.pokemonLeveledUps.forEach((item: PokemonLevel) => {
+  if (data?.blocknogotchiLeveledUps) {
+    data.blocknogotchiLeveledUps.forEach((item: PokemonLevel) => {
       const tokenId = item.tokenId;
       if (!processedData[tokenId] || processedData[tokenId].level < item.newLevel) {
         processedData[tokenId] = {
