@@ -1,11 +1,23 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
-
+import { GRAPH_BLOCKNOGOTCHI_URL, GRAPH_MARKETPLACE_URL, GRAPH_P2P_URL } from './config';
 // Create an Apollo Client instance
-const client = new ApolloClient({
+export const blockmonGraphClient = new ApolloClient({
   link: new HttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPH_BLOCKNOGOTCHI_URL,
+    uri: GRAPH_BLOCKNOGOTCHI_URL,
   }),
   cache: new InMemoryCache(),
 });
 
-export default client;
+export const marketplaceGraphClient = new ApolloClient({
+  link: new HttpLink({
+    uri: GRAPH_MARKETPLACE_URL,
+  }),
+  cache: new InMemoryCache(),
+});
+
+export const p2pGraphClient = new ApolloClient({
+  link: new HttpLink({
+    uri: GRAPH_P2P_URL,
+  }),
+  cache: new InMemoryCache(),
+});

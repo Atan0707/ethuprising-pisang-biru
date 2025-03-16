@@ -6,27 +6,17 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { RetroButton } from "@/components/ui/retro-button";
 import { toast } from "sonner";
-
-// Define player interface
-interface Player {
-  id: string;
-  name: string;
-  address: string;
-  level: number;
-  blockmon: {
-    id: number;
-    name: string;
-    level: number;
-    type: string;
-    image: string;
-  };
-  position: {
-    x: number;
-    y: number;
-  };
-  status: "online" | "battling" | "idle";
-  lastActive: string;
-}
+import { Socket } from "socket.io-client";
+import { 
+  Player, 
+  Message, 
+  ServerToClientEvents, 
+  ClientToServerEvents,
+  initializeSocket,
+  disconnectSocket,
+  updatePosition as emitUpdatePosition,
+  sendMessage as emitSendMessage
+} from "../services/socketService";
 
 // Define event interface
 interface Event {
@@ -178,6 +168,11 @@ const CURRENT_PLAYER: Player = {
   lastActive: "Now"
 };
 
+// Constants
+const INTERACTION_RADIUS = 100;
+const PLAYER_AVATAR = "/images/pika.png";
+const OPPONENT_AVATAR = "/images/charizard.png";
+
 export default function EventPage() {
   const params = useParams();
   const router = useRouter();
@@ -187,15 +182,68 @@ export default function EventPage() {
   const [showPlayerDetails, setShowPlayerDetails] = useState(false);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 50 });
   const [mounted, setMounted] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ sender: string; message: string; timestamp: string }[]>([
-    { sender: "System", message: "Welcome to the event! Chat with other trainers here.", timestamp: "12:00 PM" },
-    { sender: "BlockMaster", message: "Hey everyone! Who wants to battle?", timestamp: "12:02 PM" },
-    { sender: "CryptoTrainer", message: "I'm up for a challenge!", timestamp: "12:03 PM" }
-  ]);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState("");
   const mapRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const eventId = params.id as string;
+  const [socket, setSocket] = useState<Socket<
+    ServerToClientEvents,
+    ClientToServerEvents
+  > | null>(null);
+  const [players, setPlayers] = useState<Record<string, Player>>({});
+  const [nearbyPlayers, setNearbyPlayers] = useState<Player[]>([]);
+  const [moveInterval, setMoveInterval] = useState<number | null>(null);
+
+  // Setup socket connection
+  useEffect(() => {
+    if (!eventId) return;
+    
+    const newSocket = initializeSocket(eventId);
+    setSocket(newSocket);
+
+    return () => {
+      disconnectSocket();
+    };
+  }, [eventId]);
+
+  // Handle socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handle player updates
+    socket.on("playersUpdate", (updatedPlayers: Record<string, Player>) => {
+      setPlayers(updatedPlayers);
+
+      // Calculate nearby players
+      if (socket) {
+        const nearby = Object.values(updatedPlayers).filter((player) => {
+          if (player.id === socket.id) return false;
+          const distance = Math.sqrt(
+            Math.pow(player.position.x - playerPosition.x, 2) +
+              Math.pow(player.position.y - playerPosition.y, 2)
+          );
+          return distance <= INTERACTION_RADIUS;
+        });
+        setNearbyPlayers(nearby);
+      }
+    });
+
+    // Handle receiving messages
+    socket.on("receiveMessage", (message: Message) => {
+      setChatMessages((prev) => [...prev, message]);
+      // Auto-scroll to bottom of chat
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    });
+
+    // Cleanup listeners
+    return () => {
+      socket.off("playersUpdate");
+      socket.off("receiveMessage");
+    };
+  }, [socket, playerPosition]);
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
@@ -204,13 +252,6 @@ export default function EventPage() {
     // Get event data
     if (eventId && EVENTS[eventId]) {
       setEvent(EVENTS[eventId]);
-      
-      // Add current player to the event
-      const updatedEvent = {
-        ...EVENTS[eventId],
-        participants: [...EVENTS[eventId].participants]
-      };
-      setEvent(updatedEvent);
     } else {
       // Handle invalid event ID
       router.push("/arena/event");
@@ -236,31 +277,72 @@ export default function EventPage() {
       const existingPlayer = event.participants.find(p => p.address === address);
       if (existingPlayer) {
         setPlayerPosition(existingPlayer.position);
+        if (socket) {
+          socket.emit("updatePosition", existingPlayer.position);
+        }
       }
     }
-  }, [address, event]);
+  }, [address, event, socket]);
+
+  // Handle continuous movement
+  const startMove = (direction: "up" | "down" | "left" | "right") => {
+    handleMove(direction);
+    const interval = window.setInterval(() => {
+      handleMove(direction);
+    }, 100);
+    setMoveInterval(interval);
+  };
+
+  const stopMove = () => {
+    if (moveInterval) {
+      window.clearInterval(moveInterval);
+      setMoveInterval(null);
+    }
+  };
+
+  // Handle movement
+  const handleMove = (direction: "up" | "down" | "left" | "right") => {
+    if (!socket || !mapRef.current) return;
+
+    const mapRect = mapRef.current.getBoundingClientRect();
+    const mapWidth = mapRect.width;
+    const mapHeight = mapRect.height;
+
+    let newX = playerPosition.x;
+    let newY = playerPosition.y;
+    const step = 2; // Percentage step size
+
+    switch (direction) {
+      case "up":
+        newY = Math.max(0, playerPosition.y - step);
+        break;
+      case "down":
+        newY = Math.min(100, playerPosition.y + step);
+        break;
+      case "left":
+        newX = Math.max(0, playerPosition.x - step);
+        break;
+      case "right":
+        newX = Math.min(100, playerPosition.x + step);
+        break;
+    }
+
+    if (newX !== playerPosition.x || newY !== playerPosition.y) {
+      setPlayerPosition({ x: newX, y: newY });
+      emitUpdatePosition({ x: newX, y: newY });
+    }
+  };
 
   // Handle map click to move player
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !socket) return;
     
     const rect = mapRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
     setPlayerPosition({ x, y });
-    
-    // Update current player position in the event
-    if (event) {
-      const updatedParticipants = event.participants.map(player => 
-        player.id === CURRENT_PLAYER.id ? { ...player, position: { x, y } } : player
-      );
-      
-      setEvent({
-        ...event,
-        participants: updatedParticipants
-      });
-    }
+    emitUpdatePosition({ x, y });
   };
 
   const handlePlayerClick = (player: Player) => {
@@ -274,48 +356,26 @@ export default function EventPage() {
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!chatInput.trim()) return;
-    
-    const newMessage = {
-      sender: CURRENT_PLAYER.name,
-      message: chatInput,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    
-    setChatMessages([...chatMessages, newMessage]);
-    setChatInput("");
-    
-    // Auto-scroll chat to bottom
-    setTimeout(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-    }, 100);
+    if (chatInput.trim() && socket && nearbyPlayers.length > 0) {
+      emitSendMessage(chatInput);
+      setChatInput("");
+    } else if (nearbyPlayers.length === 0) {
+      toast.info("No players nearby to chat with");
+    }
   };
 
   const handleBattleRequest = () => {
-    if (!selectedPlayer) return;
-    
-    toast.success("Battle Request Sent", {
-      description: `You challenged ${selectedPlayer.name} to a battle!`,
-      duration: 5000
-    });
-    
-    closePlayerDetails();
+    if (selectedPlayer) {
+      toast.success(`Battle request sent to ${selectedPlayer.name}`);
+      closePlayerDetails();
+    }
   };
 
-  if (!mounted || !event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-pulse text-white font-retro tracking-wide">Loading event...</div>
-      </div>
-    );
-  }
+  if (!mounted) return null;
 
   return (
     <div className="relative min-h-screen">
-      {/* Background image - positioned to respect navbar */}
+      {/* Background image */}
       <div
         className="fixed inset-0 top-16 -z-10"
         style={{
@@ -347,227 +407,242 @@ export default function EventPage() {
             </svg>
             <span className="font-pixel tracking-wide">Back to Events</span>
           </Link>
-          
-          <div className="flex items-center">
-            <div className="bg-black/50 px-3 py-1 rounded-full text-white text-sm font-pixel">
-              <span className="text-green-400 mr-1">●</span>
-              {event.participants.length + 1}/{event.maxParticipants} Online
-            </div>
-          </div>
         </div>
 
-        <h1 className="text-3xl font-bold mb-2 text-white font-retro tracking-wide uppercase">
-          {event.name}
-        </h1>
-        <p className="text-gray-300 mb-6 font-pixel tracking-wide">
-          {event.description}
-        </p>
+        {event ? (
+          <>
+            <h1 className="text-3xl font-bold mb-6 text-white font-retro tracking-wide uppercase">
+              {event.name}
+            </h1>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Event Map */}
-          <div className="lg:col-span-2">
-            <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10 mb-6">
-              <div className="p-4">
-                <h2 className="text-xl font-bold text-white mb-2 font-retro tracking-wide uppercase">
-                  Event Map
-                </h2>
-                <p className="text-gray-300 mb-4 text-sm font-pixel tracking-wide">
-                  Click anywhere on the map to move your character. Interact with other players by clicking on their avatars.
-                </p>
-                
-                {/* Interactive Map */}
-                <div 
-                  ref={mapRef}
-                  className="relative w-full h-[500px] bg-gradient-to-br from-blue-900/50 to-purple-900/50 rounded-lg border border-white/20 overflow-hidden cursor-pointer"
-                  onClick={handleMapClick}
-                >
-                  {/* Map Background */}
-                  <div className="absolute inset-0 bg-[url('/images/map-grid.png')] bg-repeat opacity-20"></div>
-                  
-                  {/* Event Areas */}
-                  <div className="absolute left-[20%] top-[30%] w-[30%] h-[25%] rounded-lg border-2 border-dashed border-yellow-500/50 bg-yellow-500/10 flex items-center justify-center">
-                    <span className="text-yellow-300 font-pixel text-sm">Battle Arena</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Event Info */}
+              <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10 lg:col-span-1">
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-white mb-4 font-retro tracking-wide uppercase">
+                    Event Info
+                  </h2>
+                  <p className="text-gray-300 mb-6 font-pixel tracking-wide">
+                    {event.description}
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-black/30 p-3 rounded-lg">
+                      <h4 className="text-gray-400 text-sm mb-1">Location</h4>
+                      <p className="text-white font-pixel tracking-wide">{event.location}</p>
+                    </div>
+                    <div className="bg-black/30 p-3 rounded-lg">
+                      <h4 className="text-gray-400 text-sm mb-1">Date</h4>
+                      <p className="text-white font-pixel tracking-wide">{event.date}</p>
+                    </div>
+                    <div className="bg-black/30 p-3 rounded-lg">
+                      <h4 className="text-gray-400 text-sm mb-1">Participants</h4>
+                      <p className="text-white font-pixel tracking-wide">
+                        {Object.keys(players).length}/{event.maxParticipants}
+                      </p>
+                    </div>
+                    <div className="bg-black/30 p-3 rounded-lg">
+                      <h4 className="text-gray-400 text-sm mb-1">Status</h4>
+                      <p className="text-white font-pixel tracking-wide">{event.active ? "Active" : "Coming Soon"}</p>
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Interactive Map */}
+              <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10 lg:col-span-2">
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-white mb-4 font-retro tracking-wide uppercase">
+                    Event Map
+                  </h2>
+                  <p className="text-gray-300 mb-4 font-pixel tracking-wide">
+                    Click on the map to move your character. Interact with other trainers when you're close to them.
+                  </p>
                   
-                  <div className="absolute right-[15%] top-[20%] w-[25%] h-[20%] rounded-lg border-2 border-dashed border-blue-500/50 bg-blue-500/10 flex items-center justify-center">
-                    <span className="text-blue-300 font-pixel text-sm">Trading Zone</span>
-                  </div>
-                  
-                  <div className="absolute left-[25%] bottom-[15%] w-[20%] h-[15%] rounded-lg border-2 border-dashed border-green-500/50 bg-green-500/10 flex items-center justify-center">
-                    <span className="text-green-300 font-pixel text-sm">Showcase Area</span>
-                  </div>
-                  
-                  <div className="absolute right-[25%] bottom-[25%] w-[20%] h-[15%] rounded-lg border-2 border-dashed border-purple-500/50 bg-purple-500/10 flex items-center justify-center">
-                    <span className="text-purple-300 font-pixel text-sm">Workshop</span>
-                  </div>
-                  
-                  {/* Other Players */}
-                  {event.participants.map((player) => (
-                    <button
-                      key={player.id}
-                      className="absolute transform -translate-x-1/2 -translate-y-1/2 group"
-                      style={{ left: `${player.position.x}%`, top: `${player.position.y}%` }}
-                      onClick={(e) => {
+                  {/* Map Area */}
+                  <div 
+                    ref={mapRef}
+                    className="relative w-full h-[400px] bg-gradient-to-br from-blue-900/50 to-purple-900/50 rounded-lg border border-white/20 overflow-hidden mb-6"
+                    onClick={handleMapClick}
+                  >
+                    {/* Map Background */}
+                    <div className="absolute inset-0 bg-[url('/images/map.webp')] bg-cover bg-center opacity-80"></div>
+                    
+                    {/* Grid Background */}
+                    <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                      {Array.from({ length: 64 }).map((_, i) => (
+                        <div key={i} className="border border-[#3282B8]/30" />
+                      ))}
+                    </div>
+                    
+                    {/* Players */}
+                    {Object.values(players).map((player) => (
+                      <div key={player.id} onClick={(e) => {
                         e.stopPropagation();
                         handlePlayerClick(player);
-                      }}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center relative ${
-                        player.status === "battling" 
-                          ? "bg-red-500" 
-                          : player.status === "idle" 
-                            ? "bg-yellow-500" 
-                            : "bg-green-500"
-                      }`}>
-                        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
-                          <span className="text-white font-bold text-xs">{player.name.substring(0, 2)}</span>
+                      }}>
+                        {/* Player Avatar */}
+                        <div
+                          className={`absolute w-12 h-12 rounded-full transform -translate-x-1/2 -translate-y-1/2 overflow-hidden border-2 ${
+                            player.id === socket?.id
+                              ? "border-[#3282B8]"
+                              : "border-[#0F4C75]"
+                          } cursor-pointer hover:scale-110 transition-transform`}
+                          style={{
+                            left: `${player.position.x}%`,
+                            top: `${player.position.y}%`,
+                            zIndex: 20,
+                          }}
+                        >
+                          <img
+                            src={player.id === socket?.id ? PLAYER_AVATAR : OPPONENT_AVATAR}
+                            alt={player.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         
-                        {/* Status indicator */}
-                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border border-gray-800 ${
-                          player.status === "battling" 
-                            ? "bg-red-500" 
-                            : player.status === "idle" 
-                              ? "bg-yellow-500" 
-                              : "bg-green-500"
-                        }`}></div>
+                        {/* Player Name */}
+                        <div
+                          className="absolute text-sm font-bold bg-[#BBE1FA] px-2 py-0.5 rounded-full shadow-md text-[#1B262C]"
+                          style={{
+                            left: `${player.position.x}%`,
+                            top: `${player.position.y - 5}%`,
+                            transform: "translate(-50%, -100%)",
+                            zIndex: 21,
+                          }}
+                        >
+                          {player.name}
+                        </div>
+                        
+                        {/* Interaction Radius */}
+                        {player.id === socket?.id && (
+                          <div
+                            className="absolute rounded-full border-2 border-[#3282B8] opacity-30"
+                            style={{
+                              left: `${player.position.x}%`,
+                              top: `${player.position.y}%`,
+                              width: `${INTERACTION_RADIUS}px`,
+                              height: `${INTERACTION_RADIUS}px`,
+                              transform: "translate(-50%, -50%)",
+                              zIndex: 19,
+                            }}
+                          />
+                        )}
                       </div>
-                      
-                      {/* Hover tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-black/80 rounded-lg p-2 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <p className="text-white text-xs font-bold mb-1">{player.name}</p>
-                        <p className="text-gray-300 text-xs">Lv. {player.level} Trainer</p>
-                        <p className="text-xs text-gray-400 mt-1">{player.blockmon.name} (Lv. {player.blockmon.level})</p>
-                      </div>
-                    </button>
-                  ))}
+                    ))}
+                  </div>
                   
-                  {/* Current Player */}
-                  <div
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
-                    style={{ left: `${playerPosition.x}%`, top: `${playerPosition.y}%` }}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center relative animate-pulse">
-                      <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden">
-                        <span className="text-white font-bold text-xs">YOU</span>
+                  {/* Controls and Chat */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* D-Pad Controls */}
+                    <div className="bg-black/30 p-4 rounded-lg">
+                      <h3 className="text-white font-bold mb-3 font-retro tracking-wide">Controls</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div />
+                        <button
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md bg-[#0F4C75] hover:bg-[#3282B8] active:bg-[#3282B8]"
+                          onTouchStart={() => startMove("up")}
+                          onTouchEnd={stopMove}
+                          onMouseDown={() => startMove("up")}
+                          onMouseUp={stopMove}
+                          onMouseLeave={stopMove}
+                        >
+                          ⬆️
+                        </button>
+                        <div />
+                        <button
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md bg-[#0F4C75] hover:bg-[#3282B8] active:bg-[#3282B8]"
+                          onTouchStart={() => startMove("left")}
+                          onTouchEnd={stopMove}
+                          onMouseDown={() => startMove("left")}
+                          onMouseUp={stopMove}
+                          onMouseLeave={stopMove}
+                        >
+                          ⬅️
+                        </button>
+                        <div />
+                        <button
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md bg-[#0F4C75] hover:bg-[#3282B8] active:bg-[#3282B8]"
+                          onTouchStart={() => startMove("right")}
+                          onTouchEnd={stopMove}
+                          onMouseDown={() => startMove("right")}
+                          onMouseUp={stopMove}
+                          onMouseLeave={stopMove}
+                        >
+                          ➡️
+                        </button>
+                        <div />
+                        <button
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md bg-[#0F4C75] hover:bg-[#3282B8] active:bg-[#3282B8]"
+                          onTouchStart={() => startMove("down")}
+                          onTouchEnd={stopMove}
+                          onMouseDown={() => startMove("down")}
+                          onMouseUp={stopMove}
+                          onMouseLeave={stopMove}
+                        >
+                          ⬇️
+                        </button>
+                        <div />
                       </div>
+                    </div>
+                    
+                    {/* Chat Area */}
+                    <div className="bg-black/30 p-4 rounded-lg flex flex-col">
+                      <h3 className="text-white font-bold mb-3 font-retro tracking-wide">Chat</h3>
+                      <div 
+                        ref={chatContainerRef}
+                        className="flex-1 bg-[#0F4C75] rounded-lg shadow-md p-2 mb-2 overflow-y-auto max-h-[150px]"
+                      >
+                        {chatMessages.length === 0 ? (
+                          <p className="text-gray-400 text-sm text-center p-2">No messages yet. Start chatting with nearby trainers!</p>
+                        ) : (
+                          chatMessages.map((msg, idx) => (
+                            <div
+                              key={idx}
+                              className={`mb-1 p-1 rounded text-sm ${
+                                msg.senderId === socket?.id
+                                  ? "bg-[#3282B8] text-[#BBE1FA] ml-2"
+                                  : "bg-[#1B262C] text-[#BBE1FA] mr-2"
+                              }`}
+                            >
+                              <div className="text-xs font-bold">{msg.senderName}</div>
+                              <div>{msg.content}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <form onSubmit={handleChatSubmit} className="flex gap-1">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          disabled={nearbyPlayers.length === 0}
+                          placeholder={
+                            nearbyPlayers.length > 0
+                              ? "Type a message..."
+                              : "No players nearby"
+                          }
+                          className="flex-1 p-1 text-sm border rounded bg-[#BBE1FA] text-[#1B262C] placeholder-[#1B262C]/50"
+                        />
+                        <button
+                          type="submit"
+                          disabled={nearbyPlayers.length === 0}
+                          className="px-3 py-1 bg-[#3282B8] text-[#BBE1FA] text-sm rounded disabled:bg-[#1B262C]/50"
+                        >
+                          Send
+                        </button>
+                      </form>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </>
+        ) : (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <span className="ml-2 text-white font-pixel">Loading event...</span>
           </div>
-          
-          {/* Chat and Participants */}
-          <div>
-            {/* Chat */}
-            <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10 mb-6">
-              <div className="p-4">
-                <h2 className="text-xl font-bold text-white mb-2 font-retro tracking-wide uppercase">
-                  Event Chat
-                </h2>
-                
-                <div 
-                  ref={chatContainerRef}
-                  className="h-[300px] bg-black/30 rounded-lg border border-white/10 p-3 mb-3 overflow-y-auto"
-                >
-                  {chatMessages.map((msg, index) => (
-                    <div key={index} className="mb-2">
-                      <div className="flex items-start">
-                        <span className={`font-bold text-sm ${
-                          msg.sender === "System" 
-                            ? "text-yellow-400" 
-                            : msg.sender === CURRENT_PLAYER.name 
-                              ? "text-blue-400" 
-                              : "text-green-400"
-                        }`}>
-                          {msg.sender}:
-                        </span>
-                        <span className="text-white text-sm ml-2 flex-grow">{msg.message}</span>
-                        <span className="text-gray-500 text-xs ml-2">{msg.timestamp}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <form onSubmit={handleChatSubmit} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-grow bg-black/30 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Send
-                  </button>
-                </form>
-              </div>
-            </div>
-            
-            {/* Participants */}
-            <div className="bg-black/40 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-white/10">
-              <div className="p-4">
-                <h2 className="text-xl font-bold text-white mb-2 font-retro tracking-wide uppercase">
-                  Participants
-                </h2>
-                
-                <div className="max-h-[300px] overflow-y-auto pr-2">
-                  {/* Current Player */}
-                  <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 mb-2 flex items-center">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center mr-3">
-                      <span className="text-white font-bold text-xs">YOU</span>
-                    </div>
-                    <div className="flex-grow">
-                      <p className="text-white font-bold">{CURRENT_PLAYER.name} (You)</p>
-                      <p className="text-gray-300 text-sm">Lv. {CURRENT_PLAYER.level} • {CURRENT_PLAYER.blockmon.name}</p>
-                    </div>
-                    <div className="text-green-400 text-xs">Online</div>
-                  </div>
-                  
-                  {/* Other Participants */}
-                  {event.participants.map((player) => (
-                    <div 
-                      key={player.id}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg p-3 mb-2 flex items-center cursor-pointer transition-colors"
-                      onClick={() => handlePlayerClick(player)}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                        player.status === "battling" 
-                          ? "bg-red-500" 
-                          : player.status === "idle" 
-                            ? "bg-yellow-500" 
-                            : "bg-green-500"
-                      }`}>
-                        <span className="text-white font-bold text-xs">{player.name.substring(0, 2)}</span>
-                      </div>
-                      <div className="flex-grow">
-                        <p className="text-white font-bold">{player.name}</p>
-                        <p className="text-gray-300 text-sm">Lv. {player.level} • {player.blockmon.name}</p>
-                      </div>
-                      <div className={`text-xs ${
-                        player.status === "battling" 
-                          ? "text-red-400" 
-                          : player.status === "idle" 
-                            ? "text-yellow-400" 
-                            : "text-green-400"
-                      }`}>
-                        {player.status === "battling" 
-                          ? "Battling" 
-                          : player.status === "idle" 
-                            ? "Idle" 
-                            : "Online"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Player Details Modal */}
@@ -587,72 +662,61 @@ export default function EventPage() {
                 </button>
               </div>
               
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-4">
-                  <span className="text-white font-bold text-xl">{selectedPlayer.name.substring(0, 2)}</span>
+              <div className="flex items-center mb-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 mr-4">
+                  <img 
+                    src={selectedPlayer.blockmon.image}
+                    alt={selectedPlayer.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
-                  <p className="text-white font-bold text-lg">{selectedPlayer.name}</p>
-                  <p className="text-gray-400 text-sm">Level {selectedPlayer.level} Trainer</p>
-                  <p className="text-gray-400 text-xs mt-1">{selectedPlayer.address}</p>
+                  <p className="text-white font-pixel">Level {selectedPlayer.level} Trainer</p>
+                  <p className="text-gray-400 text-sm font-pixel">{selectedPlayer.address}</p>
+                  <p className={`text-sm font-pixel ${
+                    selectedPlayer.status === "online" ? "text-green-400" : 
+                    selectedPlayer.status === "battling" ? "text-orange-400" : "text-gray-400"
+                  }`}>
+                    {selectedPlayer.status.charAt(0).toUpperCase() + selectedPlayer.status.slice(1)}
+                  </p>
                 </div>
               </div>
               
-              <div className="bg-black/30 rounded-lg p-4 mb-6">
-                <h4 className="text-white font-bold mb-2">Active Blockmon</h4>
+              <div className="bg-black/30 p-3 rounded-lg mb-4">
+                <h4 className="text-gray-400 text-sm mb-2">Main Blockmon</h4>
                 <div className="flex items-center">
-                  <div className="w-16 h-16 bg-gray-800 rounded-lg mr-3 flex items-center justify-center">
-                    <span className="text-gray-400 text-xs">Image</span>
+                  <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 mr-3">
+                    <img 
+                      src={selectedPlayer.blockmon.image}
+                      alt={selectedPlayer.blockmon.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div>
-                    <p className="text-white font-bold">{selectedPlayer.blockmon.name}</p>
-                    <p className="text-gray-300 text-sm">Level {selectedPlayer.blockmon.level}</p>
-                    <p className="text-blue-400 text-sm">{selectedPlayer.blockmon.type}</p>
+                    <p className="text-white font-pixel">{selectedPlayer.blockmon.name}</p>
+                    <p className="text-gray-400 text-sm font-pixel">Level {selectedPlayer.blockmon.level} • {selectedPlayer.blockmon.type}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-black/30 rounded-lg p-4 mb-6">
-                <h4 className="text-white font-bold mb-2">Status</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-gray-400 text-sm">Status</p>
-                    <p className={`font-bold ${
-                      selectedPlayer.status === "battling" 
-                        ? "text-red-400" 
-                        : selectedPlayer.status === "idle" 
-                          ? "text-yellow-400" 
-                          : "text-green-400"
-                    }`}>
-                      {selectedPlayer.status === "battling" 
-                        ? "In Battle" 
-                        : selectedPlayer.status === "idle" 
-                          ? "Idle" 
-                          : "Online"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Last Active</p>
-                    <p className="text-white">{selectedPlayer.lastActive}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <RetroButton 
                   variant="default" 
-                  size="full" 
+                  size="default" 
                   className="w-full"
                   onClick={handleBattleRequest}
                   disabled={selectedPlayer.status === "battling"}
                 >
-                  {selectedPlayer.status === "battling" 
-                    ? "Player is in battle" 
-                    : "Challenge to Battle"}
+                  {selectedPlayer.status === "battling" ? "Currently in Battle" : "Request Battle"}
                 </RetroButton>
                 
-                <RetroButton variant="blue" size="full" className="w-full">
-                  Send Message
+                <RetroButton 
+                  variant="blue" 
+                  size="default" 
+                  className="w-full"
+                  onClick={closePlayerDetails}
+                >
+                  Close
                 </RetroButton>
               </div>
             </div>

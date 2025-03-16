@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { readFromNfcTag } from "@/app/utils/nfc";
 import { listNFT, getOwnedNFTs, BlockmonData } from "@/app/utils/marketplace";
 import { ethers } from "ethers";
-import Blockmon from "@/contract/Blockmon.json";
+import Blocknogotchi from "@/contract/BlocknogotchiContract.json";
 
 // Enum mapping for attributes
 const attributeMap = [
@@ -177,7 +177,7 @@ export default function ListNFTPage() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         "0xe1e52a36E15eBf6785842e55b6d1D901819985ec",
-        Blockmon.abi,
+        Blocknogotchi.abi,
         signer
       );
 
@@ -196,7 +196,7 @@ export default function ListNFTPage() {
       }
 
       // Get Pokemon data to verify ownership
-      const pokemonData = await contract.getPokemon(tokenId);
+      const pokemonData = await contract.getBlocknogotchi(tokenId);
       const owner = pokemonData[11]; // owner is at index 11 in the return tuple
 
       if (owner.toLowerCase() !== address?.toLowerCase()) {

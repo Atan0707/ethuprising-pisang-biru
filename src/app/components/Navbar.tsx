@@ -156,7 +156,7 @@ export default function Navbar() {
                     : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
                 }`}
               >
-                Blockmon
+                Check
               </Link>
               <Link
                 href="/arena"
@@ -219,7 +219,7 @@ export default function Navbar() {
                       clipRule="evenodd"
                     />
                   </svg>
-                  My Blockmon
+                  My Blocknogotchi
                 </Link>
               )}
             </div>

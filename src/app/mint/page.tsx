@@ -5,13 +5,10 @@ import Image from "next/image";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { Eip1193Provider, ethers } from "ethers";
 import MintCard from "../components/mint/MintCard";
-import Blockmon from "@/contract/Blockmon.json";
+import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 
-// Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blockmon.abi;
-
-// Contract address
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
+const CONTRACT_ABI = BlocknogotchiContract.abi;
 
 export default function MintPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -28,7 +25,7 @@ export default function MintPage() {
             walletProvider as Eip1193Provider
           );
           const contract = new ethers.Contract(
-            CONTRACT_ADDRESS,
+            BLOCKNOGOTCHI_CONTRACT_ADDRESS,
             CONTRACT_ABI,
             provider
           );

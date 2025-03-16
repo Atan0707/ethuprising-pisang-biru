@@ -9,7 +9,7 @@ import LeaderboardByCollectors from '@/app/components/leaderboard/LeaderboardByC
 // Query to get summary statistics
 const GET_SUMMARY_STATS = gql`
   query GetSummaryStats {
-    pokemonLeveledUps(first: 5, orderBy: newLevel, orderDirection: desc) {
+    blocknogotchiLeveledUps(first: 5, orderBy: newLevel, orderDirection: desc) {
       tokenId
       newLevel
     }
@@ -46,14 +46,14 @@ export default function LeaderboardPage() {
     uniqueBlockmonIds.add(battle.opponentId);
   });
   
-  data?.pokemonLeveledUps?.forEach((levelUp: LevelUp) => {
+  data?.blocknogotchiLeveledUps?.forEach((levelUp: LevelUp) => {
     uniqueBlockmonIds.add(levelUp.tokenId);
   });
   
   const totalBlockmon = uniqueBlockmonIds.size;
   
   // Get highest level
-  const highestLevel = data?.pokemonLeveledUps?.[0]?.newLevel || 0;
+  const highestLevel = data?.blocknogotchiLeveledUps?.[0]?.newLevel || 0;
 
   return (
     <div className="container mx-auto px-4 py-8">

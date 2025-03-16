@@ -39,7 +39,10 @@ function Map() {
   > | null>(null);
   // built-in utility type in ts, it means all keys are string, and all values are type Player
   const [players, setPlayers] = useState<Record<string, Player>>({});
-  const [viewport, setViewport] = useState({
+  const [
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    viewport, 
+    setViewport] = useState({
     width: MAP_WIDTH,
     height: MAP_HEIGHT,
   });
@@ -50,7 +53,7 @@ function Map() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [nearbyPlayers, setNearbyPlayers] = useState<Player[]>([]);
-  const [showChat, setShowChat] = useState(false);
+  // const [showChat, setShowChat] = useState(false);
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [moveInterval, setMoveInterval] = useState<number | null>(null);

@@ -4,18 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { Eip1193Provider, ethers } from "ethers";
-import Blockmon from "@/contract/Blockmon.json";
 import NFCScanner from "@/app/components/claim/NFCScanner";
 import ClaimSuccess from "@/app/components/claim/ClaimSuccess";
 import { toast } from "sonner";
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
+import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 
-// Contract ABI (partial, just what we need)
-const CONTRACT_ABI = Blockmon.abi;
-
-// Contract address
-const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0xe1e52a36E15eBf6785842e55b6d1D901819985ec";
 
 // Type for event logs
 interface EventLog {
@@ -139,13 +133,13 @@ export default function ClaimPage() {
       );
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        CONTRACT_ABI,
+        BLOCKNOGOTCHI_CONTRACT_ADDRESS,
+        BlocknogotchiContract.abi,
         signer
       );
 
       // Call claimPokemon function with the hash from NFC card
-      const tx = await contract.claimPokemon(claimHash);
+      const tx = await contract.claimBlocknogotchi(claimHash);
 
       // Show transaction submitted toast
       toast.dismiss(pendingToastId);
@@ -181,20 +175,21 @@ export default function ClaimPage() {
           }
         })
         .find(
-          (event: EventLog | null) => event && event.name === "PokemonClaimed"
+          (event: EventLog | null) => event && event.name === "BlocknogotchiClaimed"
         );
 
       if (event && event.args) {
         const tokenId = event.args[0].toString();
 
         // Get pet details
-        const pokemon = await contract.getPokemon(tokenId);
+        const blocknogotchi = await contract.getBlocknogotchi(tokenId);
 
         setClaimResult({
           tokenId,
-          petName: pokemon.name,
-          image: pokemon.tokenURI,
+          petName: blocknogotchi.name,
+          image: blocknogotchi.tokenURI,
         });
+        console.log(claimResult);
       }
     } catch (err) {
       console.error("Error claiming:", err);
