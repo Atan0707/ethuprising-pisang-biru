@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -204,7 +205,7 @@ function Battle() {
           newLog.push("Opponent took damage!");
         }
         // Modified this part to show all mana gains
-        data.manaGained.forEach((player: any) => {
+        data.manaGained.forEach((player: string) => {
           newLog.push(`${player === "you" ? "You" : "Opponent"} gained mana!`);
         });
         return [...newLog, ...prev].slice(0, 5);
@@ -354,7 +355,7 @@ function Battle() {
                   className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
                               bg-black bg-opacity-50 text-white p-4 rounded"
                 >
-                  Waiting for opponent's move...
+                  Waiting for opponent&apos;s move...
                 </div>
               )}
 

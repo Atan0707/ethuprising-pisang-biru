@@ -60,7 +60,7 @@ export const initializeSocket = (eventId?: string): Socket<ServerToClientEvents,
     
     // Join the specific event room if provided
     if (eventId) {
-      socket.emit("joinEvent", eventId);
+      socket!.emit("joinEvent", eventId);
     }
   });
 

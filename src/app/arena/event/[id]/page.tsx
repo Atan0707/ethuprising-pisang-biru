@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -455,7 +456,7 @@ export default function EventPage() {
                     Event Map
                   </h2>
                   <p className="text-gray-300 mb-4 font-pixel tracking-wide">
-                    Click on the map to move your character. Interact with other trainers when you're close to them.
+                    Click on the map to move your character. Interact with other trainers when you&apos;re close to them.
                   </p>
                   
                   {/* Map Area */}
