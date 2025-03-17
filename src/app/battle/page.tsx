@@ -281,7 +281,7 @@ function Battle() {
   }, []);
 
   useEffect(() => {
-    const socketUrl = "http://167.99.77.31:3006/";
+    const socketUrl = "https://167.99.77.31:3006/";
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
