@@ -7,3 +7,5 @@ export const GRAPH_BLOCKNOGOTCHI_URL = 'https://api.studio.thegraph.com/query/10
 export const GRAPH_P2P_URL = 'https://api.studio.thegraph.com/query/105196/blocknogotchi-escrow/version/latest';
 export const GRAPH_MARKETPLACE_URL = 'https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest';
 export const RPC_URL = 'https://sepolia-rpc.scroll.io/';
+
+export const war_url = 'http://167.99.77.31:3006';

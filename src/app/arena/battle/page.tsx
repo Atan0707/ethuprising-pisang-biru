@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import Image from "next/image";
+import { war_url } from "@/app/utils/config";
 
 const YOU = {
   health: 500,
@@ -87,7 +88,7 @@ function Battle() {
   const [combatLog, setCombatLog] = useState<string[]>([]);
 
   useEffect(() => {
-    const socketUrl = "http://localhost:3006";
+    const socketUrl = war_url;
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
