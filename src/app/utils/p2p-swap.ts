@@ -775,7 +775,6 @@ export const createP2PListing = async (
     // Convert price to wei
     const priceInWei = ethers.parseEther(price);
 
-    // If we have a serial number, combine it with the hash for extra security
     const hashData = nfcHash;
 
     // Create the listing
@@ -810,23 +809,15 @@ export const purchaseP2PListing = async (
     // Convert price to wei
     const priceInWei = ethers.parseEther(price);
 
-    // Clean up and format the hash properly
-    let cleanHash = nfcHash
-      .replace("blocknogotchi-hash:", "")
-      .split(":")[0]
-      .trim();
+    // Process the hash consistently with other functions
+    const hashData = nfcHash;
+    
+    console.log("Purchase hash:", hashData); // Debug log
 
-    // The hash should be used directly if it's already in bytes format
-    if (!cleanHash.startsWith("0x")) {
-      cleanHash = `0x${cleanHash}`;
-    }
-
-    console.log("Purchase hash (before):", cleanHash); // Debug log
-
-    // Purchase the listing with the properly formatted hash
+    // Purchase the listing with the properly hashed data
     const purchaseTx = await p2pSwapContract.purchaseListing(
       tokenId,
-      cleanHash, // Use the clean hash directly, no need for additional encoding
+      ethers.keccak256(ethers.toUtf8Bytes(hashData)),
       { value: priceInWei }
     );
     await purchaseTx.wait();
@@ -874,7 +865,6 @@ export const claimBackP2PListing = async (
     const signer = await getSigner(walletProvider);
     const p2pSwapContract = await getP2PSwapContract(signer);
 
-    // If we have a serial number, combine it with the hash for extra security
     const hashData = nfcHash;
 
     // Claim back the listing
