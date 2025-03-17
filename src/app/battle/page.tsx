@@ -281,10 +281,10 @@ function Battle() {
   }, []);
 
   useEffect(() => {
-    const socketUrl = "https://167.99.77.31:3006/";
+    const socketUrl = "http://167.99.77.31:3006/";
     const newSocket = io(socketUrl, {
       reconnection: true,
-      secure: true,
+      secure: false,
     });
 
     // Select random blockmons for player and opponent
