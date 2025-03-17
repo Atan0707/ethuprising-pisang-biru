@@ -70,6 +70,11 @@ interface OpponentData {
   tokenId: string;
 }
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
+// The useEffect dependencies are intentionally limited to prevent infinite loops
+// and unnecessary re-renders. The other values are handled within the state updates.
+
 function Battle() {
   const [socket, setSocket] = useState<Socket<
     ServerToClientEvents,
@@ -422,7 +427,7 @@ function Battle() {
         }
 
         newHealth = Math.max(0, newHealth);
-        let playerGameOver = "";
+        const playerGameOver = "";
         if (newHealth <= 0) {
           if (opponentPlayer.health <= 0) {
             handleGameOver("draw");
@@ -457,7 +462,7 @@ function Battle() {
         }
 
         newHealth = Math.max(0, newHealth);
-        let playerGameOver = "";
+        const playerGameOver = "";
         if (newHealth <= 0) {
           if (yourPlayer.health <= 0) {
             handleGameOver("draw");

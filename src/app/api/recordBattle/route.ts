@@ -6,6 +6,18 @@ import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 // Keep track of the last transaction for each battle pair
 const battleTransactions = new Map<string, string>();
 
+// Add these interfaces at the top of the file
+interface ErrorWithMessage {
+  message?: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  transactionHash?: string;
+  message?: string;
+  error?: string;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -71,28 +83,36 @@ export async function POST(request: Request) {
         success: true,
         transactionHash: receipt.hash,
       });
-    } catch (error: any) {
-      if (error.message?.includes("already known")) {
-        // If the transaction is already known, wait briefly and check for the hash
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const existingTxHash = battleTransactions.get(battleKey);
-        if (existingTxHash) {
-          return NextResponse.json({
-            success: true,
-            transactionHash: existingTxHash,
-            message: "Battle already recorded",
-          });
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && "message" in error) {
+        const typedError = error as ErrorWithMessage;
+        if (typedError.message?.includes("already known")) {
+          // If the transaction is already known, wait briefly and check for the hash
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const existingTxHash = battleTransactions.get(battleKey);
+          if (existingTxHash) {
+            return NextResponse.json({
+              success: true,
+              transactionHash: existingTxHash,
+              message: "Battle already recorded",
+            });
+          }
         }
       }
       throw error;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error recording battle:", error);
+    const errorMessage =
+      error && typeof error === "object" && "message" in error
+        ? (error as ErrorWithMessage).message
+        : "Unknown error";
+
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Unknown error",
-      },
+        error: errorMessage,
+      } as ApiResponse,
       { status: 500 }
     );
   }

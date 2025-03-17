@@ -6,6 +6,9 @@ import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @next/next/no-img-element */
+
 // Define a type for our Pokemon data
 interface PokemonData {
   tokenId: number;
@@ -37,8 +40,7 @@ function Page() {
 
       const ownedPokemon: PokemonData[] = [];
 
-      // Loop through tokens 1-10
-      for (let tokenId = 1; tokenId <= 10; tokenId++) {
+      for (let tokenId = 1; tokenId <= 30; tokenId++) {
         try {
           const owner = await contract.ownerOf(tokenId);
 
@@ -128,10 +130,13 @@ function Page() {
                 onClick={() => selectPokemon(pokemon)}
               >
                 <h2 className="text-xl font-bold">{pokemon.name}</h2>
-                <img
+                <Image
                   src={pokemon.tokenURI}
                   alt={pokemon.name}
+                  width={400}
+                  height={300}
                   className="w-full h-48 object-cover"
+                  unoptimized
                 />
                 <div className="mt-2">
                   <p>HP: {pokemon.hp}</p>
