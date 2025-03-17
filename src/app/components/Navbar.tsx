@@ -179,9 +179,9 @@ export default function Navbar() {
                 P2P
               </Link>
               <Link
-                href="/battle"
+                href="/choose"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/battle")
+                  isActive("/choose")
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
                 }`}
@@ -389,9 +389,9 @@ export default function Navbar() {
                 P2P
               </Link>
               <Link
-                href="/battle"
+                href="/choose"
                 className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive("/battle")
+                  isActive("/choose")
                     ? "text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-800"
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}

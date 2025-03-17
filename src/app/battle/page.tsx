@@ -29,12 +29,26 @@ interface gameState {
 }
 
 interface ClientToServerEvents {
-  joinGame: () => void;
+  joinGame: (playerData: {
+    imageUrl: string;
+    name: string;
+    baseDamage: number;
+    health: number;
+  }) => void;
   makeMove: (data: { gameId: string; move: string }) => void;
 }
 
 interface ServerToClientEvents {
-  gameStart: (data: { gameId: string; opponent: boolean }) => void;
+  gameStart: (data: {
+    gameId: string;
+    opponent: boolean;
+    opponentData: {
+      imageUrl: string;
+      name: string;
+      baseDamage: number;
+      health: number;
+    };
+  }) => void;
   waiting: () => void;
   opponentMoved: () => void;
   roundResult: (data: {
@@ -44,7 +58,6 @@ interface ServerToClientEvents {
     manaGained: string[];
   }) => void;
 }
-
 function Battle() {
   const [socket, setSocket] = useState<Socket<
     ServerToClientEvents,
@@ -98,8 +111,49 @@ function Battle() {
   // Add state for combat log
   const [combatLog, setCombatLog] = useState<string[]>([]);
 
+  // Update playerData state type
+  const [playerData, setPlayerData] = useState<{
+    imageUrl: string;
+    name: string;
+    baseDamage: number;
+    health: number;
+  } | null>(null);
+
+  // Add opponent data state
+  const [opponentData, setOpponentData] = useState<{
+    imageUrl: string;
+    name: string;
+    baseDamage: number;
+    health: number;
+  } | null>(null);
+
+  // Modify useEffect to set initial player states from URL params
   useEffect(() => {
-    const socketUrl = "http://localhost:3006";
+    const params = new URLSearchParams(window.location.search);
+    const playerData = {
+      imageUrl: params.get("imageUrl") || "",
+      name: params.get("name") || "Unknown",
+      baseDamage: parseInt(params.get("baseDamage") || "0"),
+      health: parseInt(params.get("health") || "500"),
+    };
+    setPlayerData(playerData);
+
+    // Set initial player states based on URL params
+    setYourPlayer((prev) => ({
+      ...prev,
+      health: playerData.health,
+      healthPercent: 100,
+    }));
+
+    // Update YOU constant with player data
+    Object.assign(YOU, {
+      health: playerData.health,
+      damagePerAttack: playerData.baseDamage,
+    });
+  }, []);
+
+  useEffect(() => {
+    const socketUrl = "http://167.99.77.31:3003";
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
@@ -113,16 +167,16 @@ function Battle() {
       "Nocturnyx",
       "Luminox",
       "Ignisoul",
-      "Golethorn"
+      "Golethorn",
     ];
-    
+
     // Ensure player and opponent get different blockmons
     const playerIndex = Math.floor(Math.random() * blockmons.length);
     let opponentIndex;
     do {
       opponentIndex = Math.floor(Math.random() * blockmons.length);
     } while (opponentIndex === playerIndex);
-    
+
     setPlayerBlockmon(blockmons[playerIndex]);
     setOpponentBlockmon(blockmons[opponentIndex]);
 
@@ -147,6 +201,22 @@ function Battle() {
         myMove: null,
         opponentMoved: false,
       });
+
+      // Set opponent's data from the server
+      if (data.opponentData) {
+        setOpponentData(data.opponentData);
+        setOpponentPlayer((prev) => ({
+          ...prev,
+          health: data.opponentData.health,
+          healthPercent: 100,
+        }));
+
+        // Update OPPONENT constant with opponent data
+        Object.assign(OPPONENT, {
+          health: data.opponentData.health,
+          damagePerAttack: data.opponentData.baseDamage,
+        });
+      }
 
       newSocket.on("opponentMoved", () => {
         setGameState((prev) => ({
@@ -201,9 +271,8 @@ function Battle() {
         let newHealth = prev.health;
         let newMana = prev.mana;
 
-        // Handle damage
         if (data.damageTo === "you" || data.damageTo === "both") {
-          newHealth -= OPPONENT.damagePerAttack;
+          newHealth -= opponentData?.baseDamage || OPPONENT.damagePerAttack;
         }
 
         // Handle mana changes
@@ -224,7 +293,7 @@ function Battle() {
         return {
           health: newHealth,
           mana: newMana,
-          healthPercent: (newHealth / YOU.health) * 100,
+          healthPercent: (newHealth / (playerData?.health || YOU.health)) * 100,
           manaPercent: (newMana / YOU.mana) * 100,
           gameOver: playerGameOver,
         };
@@ -234,9 +303,8 @@ function Battle() {
         let newHealth = prev.health;
         let newMana = prev.mana;
 
-        // Handle damage
         if (data.damageTo === "opponent" || data.damageTo === "both") {
-          newHealth -= YOU.damagePerAttack;
+          newHealth -= playerData?.baseDamage || YOU.damagePerAttack;
         }
 
         // Handle mana changes
@@ -257,7 +325,8 @@ function Battle() {
         return {
           health: newHealth,
           mana: newMana,
-          healthPercent: (newHealth / OPPONENT.health) * 100,
+          healthPercent:
+            (newHealth / (opponentData?.health || OPPONENT.health)) * 100,
           manaPercent: (newMana / OPPONENT.mana) * 100,
           gameOver: playerGameOver,
         };
@@ -291,8 +360,8 @@ function Battle() {
   }, []);
 
   const handleJoinGame = () => {
-    if (socket) {
-      socket.emit("joinGame");
+    if (socket && playerData) {
+      socket.emit("joinGame", playerData);
     }
   };
 
@@ -311,18 +380,19 @@ function Battle() {
 
   return (
     <>
-      <div 
+      <div
         className={`min-h-screen w-full bg-no-repeat bg-cover bg-center fixed inset-0 ${
-          showDamageAnimation ? 
-            damageTarget === "you" || damageTarget === "both" ? 
-              "animate-damage-shake damage-overlay-you" : 
-              "animate-damage-shake damage-overlay-opponent" 
+          showDamageAnimation
+            ? damageTarget === "you" || damageTarget === "both"
+              ? "animate-damage-shake damage-overlay-you"
+              : "animate-damage-shake damage-overlay-opponent"
             : ""
         }`}
-        style={{ 
-          backgroundImage: "url('/images/events/battle-theme/background-battle.gif')",
+        style={{
+          backgroundImage:
+            "url('/images/events/battle-theme/background-battle.gif')",
           imageRendering: "pixelated",
-          backgroundSize: "100% 100%"
+          backgroundSize: "100% 100%",
         }}
       >
         <div className="flex flex-col h-screen">
@@ -330,7 +400,7 @@ function Battle() {
             <div className="flex justify-center items-center h-screen">
               <button
                 onClick={handleJoinGame}
-                className="px-8 py-4 rounded pixelated font-bold uppercase text-xl bg-gray-700 text-white border-t-4 border-l-4 border-gray-500 border-b-4 border-r-4 border-gray-900 hover:bg-gray-600"
+                className="px-8 py-4 rounded pixelated font-bold uppercase text-xl bg-gray-700 text-white border-t-4 border-l-4  border-b-4 border-r-4 border-gray-900 hover:bg-gray-600"
               >
                 Join Game
               </button>
@@ -351,47 +421,55 @@ function Battle() {
               <div className="flex flex-row w-full justify-center gap-6 md:gap-4 absolute md:static top-[15%] left-0 right-0 px-2 md:px-8 z-30 md:pt-25">
                 {/* Player health/mana - Left */}
                 <div className="w-[40%] md:flex-1 space-y-1 md:space-y-2">
+                  <div className="text-white font-bold pixelated text-xs md:text-base mb-1">
+                    {playerData?.name || "Player"}
+                  </div>
                   <div className="flex items-center">
-                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">HP</span>
+                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">
+                      HP
+                    </span>
                     <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
-                        style={{ 
+                        style={{
                           width: `${yourPlayer.healthPercent}%`,
-                          boxShadow: "0 0 4px #ff0000"
+                          boxShadow: "0 0 4px #ff0000",
                         }}
                       ></div>
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">MP</span>
+                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">
+                      MP
+                    </span>
                     <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
-                        style={{ 
+                        style={{
                           width: `${yourPlayer.manaPercent}%`,
-                          boxShadow: "0 0 4px #0000ff"
+                          boxShadow: "0 0 4px #0000ff",
                         }}
                       ></div>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Combat Log - Hidden on mobile, visible in original position on desktop */}
                 <div className="hidden md:flex md:w-[40%] md:flex-col md:items-center md:justify-center md:overflow-auto md:text-white">
-                  <div 
+                  <div
                     className="w-full h-full flex flex-col items-center justify-center pixelated relative"
                     style={{
-                      backgroundImage: "url('/images/events/battle-theme/chatbox.png')",
+                      backgroundImage:
+                        "url('/images/events/battle-theme/chatbox.png')",
                       backgroundSize: "100% 100%",
                       backgroundRepeat: "no-repeat",
                       imageRendering: "pixelated",
-                      minHeight: "80px"
+                      minHeight: "80px",
                     }}
                   >
                     {combatLog.slice(0, 2).map((log, index) => (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className="text-sm text-center font-bold text-black"
                         style={{ textShadow: "1px 1px 0 #fff" }}
                       >
@@ -400,52 +478,60 @@ function Battle() {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Opponent health/mana - Right */}
                 <div className="w-[40%] md:flex-1 space-y-1 md:space-y-2">
+                  <div className="text-white font-bold pixelated text-xs md:text-base mb-1 text-right">
+                    {opponentData?.name || "Opponent"}
+                  </div>
                   <div className="flex items-center">
                     <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
-                        style={{ 
+                        style={{
                           width: `${opponentPlayer.healthPercent}%`,
-                          boxShadow: "0 0 4px #ff0000"
+                          boxShadow: "0 0 4px #ff0000",
                         }}
                       ></div>
                     </div>
-                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">HP</span>
+                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">
+                      HP
+                    </span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
-                        style={{ 
+                        style={{
                           width: `${opponentPlayer.manaPercent}%`,
-                          boxShadow: "0 0 4px #0000ff"
+                          boxShadow: "0 0 4px #0000ff",
                         }}
                       ></div>
                     </div>
-                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">MP</span>
+                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">
+                      MP
+                    </span>
                   </div>
                 </div>
               </div>
-              
+
               {/* Combat Log in the middle of the page - Mobile only */}
               <div className="md:hidden absolute top-[40%] left-1/2 -translate-x-1/2 w-[80%] flex flex-col items-center justify-center overflow-auto text-white z-30">
-                <div 
+                <div
                   className="w-full h-full flex flex-col items-center justify-center pixelated relative"
                   style={{
-                    backgroundImage: "url('/images/events/battle-theme/chatbox.png')",
+                    backgroundImage:
+                      "url('/images/events/battle-theme/chatbox.png')",
                     backgroundSize: "100% 100%",
                     backgroundRepeat: "no-repeat",
                     imageRendering: "pixelated",
                     minHeight: "50px",
-                    padding: "8px"
+                    padding: "8px",
                   }}
                 >
                   {combatLog.slice(0, 2).map((log, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="text-xs text-center font-bold text-black"
                       style={{ textShadow: "1px 1px 0 #fff" }}
                     >
@@ -454,7 +540,7 @@ function Battle() {
                   ))}
                 </div>
               </div>
-              
+
               {/* Main battle area with players positioned at the bottom */}
               <div className="flex-1 flex flex-row w-full relative h-screen md:h-auto">
                 {/* Buttons in the middle of the screen - Mobile only */}
@@ -471,7 +557,7 @@ function Battle() {
                       gameOver ||
                       yourPlayer.mana < YOU.manaPerAttack
                         ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
-                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                        : "bg-gray-700 text-white border-t-1 border-l-1  border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
                     }`}
                   >
                     Attack
@@ -482,7 +568,7 @@ function Battle() {
                     className={`flex-1 px-1 py-1 rounded pixelated font-bold uppercase text-[10px] ${
                       gameState.myMove || gameOver
                         ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
-                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                        : "bg-gray-700 text-white border-t-1 border-l-1  border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
                     }`}
                   >
                     Dodge
@@ -493,7 +579,7 @@ function Battle() {
                     className={`flex-1 px-1 py-1 rounded pixelated font-bold uppercase text-[10px] ${
                       gameState.myMove || gameOver
                         ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
-                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                        : "bg-gray-700 text-white border-t-1 border-l-1  border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
                     }`}
                   >
                     Mana
@@ -504,69 +590,121 @@ function Battle() {
                 <div className="md:hidden w-1/2 relative">
                   {/* Player avatar on ground */}
                   <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2">
-                    <div className={`relative ${showManaAnimation && manaGainTarget === "you" ? "mana-sparkle" : ""} ${showDodgeAnimation && dodgeTarget === "you" ? "dodge-effect" : ""}`}>
-                      <Image 
-                        src={`/blockmon/${playerBlockmon}.gif`} 
-                        alt="Player Blockmon" 
+                    <div
+                      className={`relative ${
+                        showManaAnimation && manaGainTarget === "you"
+                          ? "mana-sparkle"
+                          : ""
+                      } ${
+                        showDodgeAnimation && dodgeTarget === "you"
+                          ? "dodge-effect"
+                          : ""
+                      }`}
+                    >
+                      <Image
+                        src={
+                          playerData?.imageUrl ||
+                          `/blockmon/${playerBlockmon}.gif`
+                        }
+                        alt="Player Blockmon"
                         width={160}
                         height={160}
                         className="w-24 h-24 object-contain"
-                        style={{ 
+                        style={{
                           imageRendering: "pixelated",
-                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
                         }}
                       />
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="md:hidden w-1/2 relative">
                   {/* Opponent avatar on ground */}
                   <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2">
-                    <div className={`relative ${showManaAnimation && manaGainTarget === "opponent" ? "mana-sparkle" : ""} ${showDodgeAnimation && dodgeTarget === "opponent" ? "dodge-effect" : ""}`}>
-                      <Image 
-                        src={`/blockmon/${opponentBlockmon}.gif`} 
-                        alt="Opponent Blockmon" 
+                    <div
+                      className={`relative ${
+                        showManaAnimation && manaGainTarget === "opponent"
+                          ? "mana-sparkle"
+                          : ""
+                      } ${
+                        showDodgeAnimation && dodgeTarget === "opponent"
+                          ? "dodge-effect"
+                          : ""
+                      }`}
+                    >
+                      <Image
+                        src={
+                          opponentData?.imageUrl ||
+                          `/blockmon/${opponentBlockmon}.gif`
+                        }
+                        alt="Opponent Blockmon"
                         width={160}
                         height={160}
                         className="w-24 h-24 object-contain"
-                        style={{ 
+                        style={{
                           imageRendering: "pixelated",
-                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
                         }}
                       />
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Desktop layout for players - Original positioning */}
                 <div className="hidden md:block absolute bottom-[-10%] left-[15%]">
-                  <div className={`relative ${showManaAnimation && manaGainTarget === "you" ? "mana-sparkle" : ""} ${showDodgeAnimation && dodgeTarget === "you" ? "dodge-effect" : ""}`}>
-                    <Image 
-                      src={`/blockmon/${playerBlockmon}.gif`} 
-                      alt="Player Blockmon" 
+                  <div
+                    className={`relative ${
+                      showManaAnimation && manaGainTarget === "you"
+                        ? "mana-sparkle"
+                        : ""
+                    } ${
+                      showDodgeAnimation && dodgeTarget === "you"
+                        ? "dodge-effect"
+                        : ""
+                    }`}
+                  >
+                    <Image
+                      src={
+                        playerData?.imageUrl ||
+                        `/blockmon/${playerBlockmon}.gif`
+                      }
+                      alt="Player Blockmon"
                       width={160}
                       height={160}
                       className="w-40 h-40 object-contain"
-                      style={{ 
+                      style={{
                         imageRendering: "pixelated",
-                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
                       }}
                     />
                   </div>
                 </div>
-                
+
                 <div className="hidden md:block absolute bottom-[-10%] right-[15%]">
-                  <div className={`relative ${showManaAnimation && manaGainTarget === "opponent" ? "mana-sparkle" : ""} ${showDodgeAnimation && dodgeTarget === "opponent" ? "dodge-effect" : ""}`}>
-                    <Image 
-                      src={`/blockmon/${opponentBlockmon}.gif`} 
-                      alt="Opponent Blockmon" 
+                  <div
+                    className={`relative ${
+                      showManaAnimation && manaGainTarget === "opponent"
+                        ? "mana-sparkle"
+                        : ""
+                    } ${
+                      showDodgeAnimation && dodgeTarget === "opponent"
+                        ? "dodge-effect"
+                        : ""
+                    }`}
+                  >
+                    <Image
+                      src={
+                        opponentData?.imageUrl ||
+                        `/blockmon/${opponentBlockmon}.gif`
+                      }
+                      alt="Opponent Blockmon"
                       width={160}
                       height={160}
                       className="w-40 h-40 object-contain"
-                      style={{ 
+                      style={{
                         imageRendering: "pixelated",
-                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
                       }}
                     />
                   </div>
@@ -587,7 +725,7 @@ function Battle() {
                     gameOver ||
                     yourPlayer.mana < YOU.manaPerAttack
                       ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
-                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                      : "bg-gray-700 text-white border-t-2 border-l-2  border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
                   }`}
                 >
                   Attack
@@ -598,7 +736,7 @@ function Battle() {
                   className={`px-6 py-3 rounded pixelated font-bold uppercase ${
                     gameState.myMove || gameOver
                       ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
-                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                      : "bg-gray-700 text-white border-t-2 border-l-2  border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
                   }`}
                 >
                   Dodge
@@ -609,7 +747,7 @@ function Battle() {
                   className={`px-6 py-3 rounded pixelated font-bold uppercase ${
                     gameState.myMove || gameOver
                       ? "bg-gray-600 text-yellow-400 border-2 border-gray-700"
-                      : "bg-gray-700 text-white border-t-2 border-l-2 border-gray-500 border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
+                      : "bg-gray-700 text-white border-t-2 border-l-2  border-b-2 border-r-2 border-gray-900 hover:bg-gray-600"
                   }`}
                 >
                   Mana
@@ -618,28 +756,43 @@ function Battle() {
 
               {/* Responsive overlay messages */}
               {gameState.myMove && !gameState.opponentMoved && (
-                <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-40"
-                >
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-40">
                   <div className="bg-gray-900 border-4 border-t-gray-700 border-l-gray-700 border-b-gray-950 border-r-gray-950 p-4 md:p-6 rounded-lg">
                     <div className="text-center text-sm md:text-xl font-bold text-white animate-pulse">
                       Waiting for opponent&apos;s move...
                     </div>
                     <div className="flex justify-center mt-3 space-x-1">
-                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                      <div
+                        className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      ></div>
                     </div>
                   </div>
                 </div>
               )}
 
               {gameOver && (
-                <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-50"
-                >
-                  <div className={`bg-gray-900 border-4 md:border-8 ${gameOver === "win" ? "border-yellow-500" : "border-red-700"} p-4 md:p-8 rounded-lg shadow-lg`}>
-                    <div className={`text-center text-xl md:text-3xl font-bold ${gameOver === "win" ? "text-yellow-400" : "text-red-500"}`}>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-50">
+                  <div
+                    className={`bg-gray-900 border-4 md:border-8 ${
+                      gameOver === "win"
+                        ? "border-yellow-500"
+                        : "border-red-700"
+                    } p-4 md:p-8 rounded-lg shadow-lg`}
+                  >
+                    <div
+                      className={`text-center text-xl md:text-3xl font-bold ${
+                        gameOver === "win" ? "text-yellow-400" : "text-red-500"
+                      }`}
+                    >
                       {yourPlayer.gameOver !== "" &&
                       yourPlayer.gameOver === opponentPlayer.gameOver
                         ? "DRAW!"
@@ -649,7 +802,9 @@ function Battle() {
                     </div>
                     {gameOver === "win" && (
                       <div className="mt-2 md:mt-4 flex justify-center">
-                        <div className="text-yellow-300 text-lg md:text-xl">★ ★ ★</div>
+                        <div className="text-yellow-300 text-lg md:text-xl">
+                          ★ ★ ★
+                        </div>
                       </div>
                     )}
                   </div>
@@ -668,7 +823,7 @@ function Battle() {
           letter-spacing: -1px;
           text-shadow: 2px 2px 0 #000;
         }
-        
+
         @media (max-width: 768px) {
           .pixelated {
             letter-spacing: -0.5px;
@@ -678,25 +833,47 @@ function Battle() {
 
         /* Damage animation styles */
         @keyframes shake {
-          0% { transform: translate(0, 0) rotate(0deg); }
-          10% { transform: translate(-5px, -5px) rotate(-1deg); }
-          20% { transform: translate(5px, -5px) rotate(1deg); }
-          30% { transform: translate(-5px, 5px) rotate(0deg); }
-          40% { transform: translate(5px, 5px) rotate(1deg); }
-          50% { transform: translate(-5px, -5px) rotate(-1deg); }
-          60% { transform: translate(5px, -5px) rotate(0deg); }
-          70% { transform: translate(-5px, 5px) rotate(-1deg); }
-          80% { transform: translate(-5px, -5px) rotate(1deg); }
-          90% { transform: translate(5px, 5px) rotate(0deg); }
-          100% { transform: translate(0, 0) rotate(0deg); }
+          0% {
+            transform: translate(0, 0) rotate(0deg);
+          }
+          10% {
+            transform: translate(-5px, -5px) rotate(-1deg);
+          }
+          20% {
+            transform: translate(5px, -5px) rotate(1deg);
+          }
+          30% {
+            transform: translate(-5px, 5px) rotate(0deg);
+          }
+          40% {
+            transform: translate(5px, 5px) rotate(1deg);
+          }
+          50% {
+            transform: translate(-5px, -5px) rotate(-1deg);
+          }
+          60% {
+            transform: translate(5px, -5px) rotate(0deg);
+          }
+          70% {
+            transform: translate(-5px, 5px) rotate(-1deg);
+          }
+          80% {
+            transform: translate(-5px, -5px) rotate(1deg);
+          }
+          90% {
+            transform: translate(5px, 5px) rotate(0deg);
+          }
+          100% {
+            transform: translate(0, 0) rotate(0deg);
+          }
         }
 
         .animate-damage-shake {
-          animation: shake 1.5s cubic-bezier(.36,.07,.19,.97) both;
+          animation: shake 1.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         }
 
         .damage-overlay-you::after {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
@@ -708,7 +885,7 @@ function Battle() {
         }
 
         .damage-overlay-opponent::after {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
@@ -720,37 +897,51 @@ function Battle() {
         }
 
         @keyframes fadeOut {
-          0% { opacity: 1; }
-          100% { opacity: 0; }
+          0% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+          }
         }
 
         /* Mana gain animation styles */
         @keyframes sparkle {
-          0%, 100% { box-shadow: 0 0 10px 5px rgba(0, 100, 255, 0.4); }
-          50% { box-shadow: 0 0 20px 10px rgba(0, 150, 255, 0.7); }
+          0%,
+          100% {
+            box-shadow: 0 0 10px 5px rgba(0, 100, 255, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 20px 10px rgba(0, 150, 255, 0.7);
+          }
         }
 
         .mana-sparkle::before {
-          content: '';
+          content: "";
           position: absolute;
           top: -10px;
           left: -10px;
           right: -10px;
           bottom: -10px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(0,200,255,0.2) 0%, rgba(0,100,255,0) 70%);
+          background: radial-gradient(
+            circle,
+            rgba(0, 200, 255, 0.2) 0%,
+            rgba(0, 100, 255, 0) 70%
+          );
           animation: sparkle 1.5s ease-in-out infinite;
           z-index: -1;
         }
 
         .mana-sparkle::after {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E@keyframes float %7B 0%25 %7B opacity: 0; transform: translateY(0) scale(0.5); %7D 50%25 %7B opacity: 1; %7D 100%25 %7B opacity: 0; transform: translateY(-20px) scale(1); %7D %7D .particle %7B animation: float 1s infinite ease-out; %7D .p1 %7B animation-delay: 0.1s; %7D .p2 %7B animation-delay: 0.3s; %7D .p3 %7B animation-delay: 0.5s; %7D .p4 %7B animation-delay: 0.7s; %7D .p5 %7B animation-delay: 0.9s; %7D%3C/style%3E%3Ccircle class='particle p1' cx='20' cy='50' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p2' cx='40' cy='60' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p3' cx='60' cy='30' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p4' cx='80' cy='70' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p5' cx='50' cy='40' r='2' fill='%230088ff'/%3E%3C/svg%3E") center/cover no-repeat;
+          background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E@keyframes float %7B 0%25 %7B opacity: 0; transform: translateY(0) scale(0.5); %7D 50%25 %7B opacity: 1; %7D 100%25 %7B opacity: 0; transform: translateY(-20px) scale(1); %7D %7D .particle %7B animation: float 1s infinite ease-out; %7D .p1 %7B animation-delay: 0.1s; %7D .p2 %7B animation-delay: 0.3s; %7D .p3 %7B animation-delay: 0.5s; %7D .p4 %7B animation-delay: 0.7s; %7D .p5 %7B animation-delay: 0.9s; %7D%3C/style%3E%3Ccircle class='particle p1' cx='20' cy='50' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p2' cx='40' cy='60' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p3' cx='60' cy='30' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p4' cx='80' cy='70' r='2' fill='%230088ff'/%3E%3Ccircle class='particle p5' cx='50' cy='40' r='2' fill='%230088ff'/%3E%3C/svg%3E")
+            center/cover no-repeat;
           pointer-events: none;
           z-index: 10;
           opacity: 0.8;
@@ -759,9 +950,17 @@ function Battle() {
 
         /* Dodge animation styles */
         @keyframes dodge {
-          0%, 100% { opacity: 1; }
-          25%, 75% { opacity: 0.2; }
-          50% { opacity: 0; }
+          0%,
+          100% {
+            opacity: 1;
+          }
+          25%,
+          75% {
+            opacity: 0.2;
+          }
+          50% {
+            opacity: 0;
+          }
         }
 
         .dodge-effect {
@@ -770,7 +969,7 @@ function Battle() {
         }
 
         .dodge-effect::before {
-          content: '';
+          content: "";
           position: absolute;
           top: -5px;
           left: -5px;
@@ -783,9 +982,18 @@ function Battle() {
         }
 
         @keyframes pulse {
-          0% { transform: scale(1); opacity: 0; }
-          50% { transform: scale(1.5); opacity: 0.5; }
-          100% { transform: scale(2); opacity: 0; }
+          0% {
+            transform: scale(1);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.5);
+            opacity: 0.5;
+          }
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
         }
       `}</style>
     </>
