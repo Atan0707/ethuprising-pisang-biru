@@ -296,13 +296,13 @@ function Battle() {
 
           {gameState.status === "playing" && (
             <>
-              {/* Health bars at the top but with more padding */}
-              <div className="flex flex-row w-full pt-25 px-8 gap-4">
+              {/* Health bars at the top for mobile, original layout for desktop */}
+              <div className="flex flex-row w-full justify-center gap-6 md:gap-4 absolute md:static top-[15%] left-0 right-0 px-2 md:px-8 z-30 md:pt-25">
                 {/* Player health/mana - Left */}
-                <div className="flex-1 space-y-2">
+                <div className="w-[40%] md:flex-1 space-y-1 md:space-y-2">
                   <div className="flex items-center">
-                    <span className="text-white mr-2 font-bold pixelated">HP</span>
-                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">HP</span>
+                    <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
                         style={{ 
@@ -313,8 +313,8 @@ function Battle() {
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <span className="text-white mr-2 font-bold pixelated">MP</span>
-                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                    <span className="text-white mr-1 md:mr-2 font-bold pixelated text-xs md:text-base">MP</span>
+                    <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
                         style={{ 
@@ -326,8 +326,8 @@ function Battle() {
                   </div>
                 </div>
                 
-                {/* Combat Log - Middle */}
-                <div className="w-[40%] flex flex-col items-center justify-center overflow-auto text-white">
+                {/* Combat Log - Hidden on mobile, visible in original position on desktop */}
+                <div className="hidden md:flex md:w-[40%] md:flex-col md:items-center md:justify-center md:overflow-auto md:text-white">
                   <div 
                     className="w-full h-full flex flex-col items-center justify-center pixelated relative"
                     style={{
@@ -351,9 +351,9 @@ function Battle() {
                 </div>
                 
                 {/* Opponent health/mana - Right */}
-                <div className="flex-1 space-y-2">
+                <div className="w-[40%] md:flex-1 space-y-1 md:space-y-2">
                   <div className="flex items-center">
-                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                    <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
                         style={{ 
@@ -362,10 +362,10 @@ function Battle() {
                         }}
                       ></div>
                     </div>
-                    <span className="text-white ml-2 font-bold pixelated">HP</span>
+                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">HP</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="flex-1 h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
+                    <div className="flex-1 h-3 md:h-6 bg-gray-900 border-2 border-white p-[2px] pixelated">
                       <div
                         className="h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-300"
                         style={{ 
@@ -374,18 +374,123 @@ function Battle() {
                         }}
                       ></div>
                     </div>
-                    <span className="text-white ml-2 font-bold pixelated">MP</span>
+                    <span className="text-white ml-1 md:ml-2 font-bold pixelated text-xs md:text-base">MP</span>
                   </div>
                 </div>
               </div>
               
+              {/* Combat Log in the middle of the page - Mobile only */}
+              <div className="md:hidden absolute top-[40%] left-1/2 -translate-x-1/2 w-[80%] flex flex-col items-center justify-center overflow-auto text-white z-30">
+                <div 
+                  className="w-full h-full flex flex-col items-center justify-center pixelated relative"
+                  style={{
+                    backgroundImage: "url('/images/events/battle-theme/chatbox.png')",
+                    backgroundSize: "100% 100%",
+                    backgroundRepeat: "no-repeat",
+                    imageRendering: "pixelated",
+                    minHeight: "50px",
+                    padding: "8px"
+                  }}
+                >
+                  {combatLog.slice(0, 2).map((log, index) => (
+                    <div 
+                      key={index} 
+                      className="text-xs text-center font-bold text-black"
+                      style={{ textShadow: "1px 1px 0 #fff" }}
+                    >
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
               {/* Main battle area with players positioned at the bottom */}
-              <div className="flex-1 flex flex-row w-full relative">
-                {/* Player avatar - Left */}
-                <div className="absolute bottom-[-10%] left-[15%]">
+              <div className="flex-1 flex flex-row w-full relative h-screen md:h-auto">
+                {/* Buttons in the middle of the screen - Mobile only */}
+                <div className="md:hidden absolute bottom-[0%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-row gap-1 w-[50%] z-20">
+                  <button
+                    onClick={() => handleMove("attack")}
+                    disabled={Boolean(
+                      gameState.myMove ||
+                        gameOver ||
+                        yourPlayer.mana < YOU.manaPerAttack
+                    )}
+                    className={`flex-1 px-1 py-1 rounded pixelated font-bold uppercase text-[10px] ${
+                      gameState.myMove ||
+                      gameOver ||
+                      yourPlayer.mana < YOU.manaPerAttack
+                        ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
+                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                    }`}
+                  >
+                    Attack
+                  </button>
+                  <button
+                    onClick={() => handleMove("dodge")}
+                    disabled={Boolean(gameState.myMove || gameOver)}
+                    className={`flex-1 px-1 py-1 rounded pixelated font-bold uppercase text-[10px] ${
+                      gameState.myMove || gameOver
+                        ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
+                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                    }`}
+                  >
+                    Dodge
+                  </button>
+                  <button
+                    onClick={() => handleMove("mana")}
+                    disabled={Boolean(gameState.myMove || gameOver)}
+                    className={`flex-1 px-1 py-1 rounded pixelated font-bold uppercase text-[10px] ${
+                      gameState.myMove || gameOver
+                        ? "bg-gray-600 text-yellow-400 border-1 border-gray-700"
+                        : "bg-gray-700 text-white border-t-1 border-l-1 border-gray-500 border-b-1 border-r-1 border-gray-900 hover:bg-gray-600"
+                    }`}
+                  >
+                    Mana
+                  </button>
+                </div>
+
+                {/* Mobile layout for players */}
+                <div className="md:hidden w-1/2 relative">
+                  {/* Player avatar on ground */}
+                  <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2">
+                    <Image 
+                      src={`/blockmon/${playerBlockmon}.gif`} 
+                      alt="Player Blockmon" 
+                      width={160}
+                      height={160}
+                      className="w-24 h-24 object-contain"
+                      style={{ 
+                        imageRendering: "pixelated",
+                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="md:hidden w-1/2 relative">
+                  {/* Opponent avatar on ground */}
+                  <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2">
+                    <Image 
+                      src={`/blockmon/${opponentBlockmon}.gif`} 
+                      alt="Opponent Blockmon" 
+                      width={160}
+                      height={160}
+                      className="w-24 h-24 object-contain"
+                      style={{ 
+                        imageRendering: "pixelated",
+                        filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Desktop layout for players - Original positioning */}
+                <div className="hidden md:block absolute bottom-[-10%] left-[15%]">
                   <Image 
                     src={`/blockmon/${playerBlockmon}.gif`} 
                     alt="Player Blockmon" 
+                    width={160}
+                    height={160}
                     className="w-40 h-40 object-contain"
                     style={{ 
                       imageRendering: "pixelated",
@@ -394,11 +499,12 @@ function Battle() {
                   />
                 </div>
                 
-                {/* Opponent avatar - Right */}
-                <div className="absolute bottom-[-10%] right-[15%]">
+                <div className="hidden md:block absolute bottom-[-10%] right-[15%]">
                   <Image 
                     src={`/blockmon/${opponentBlockmon}.gif`} 
                     alt="Opponent Blockmon" 
+                    width={160}
+                    height={160}
                     className="w-40 h-40 object-contain"
                     style={{ 
                       imageRendering: "pixelated",
@@ -408,8 +514,8 @@ function Battle() {
                 </div>
               </div>
 
-              {/* Buttons at the bottom */}
-              <div className="flex flex-row justify-center gap-4 w-full p-3">
+              {/* Buttons at the bottom - Desktop only */}
+              <div className="hidden md:flex md:flex-row md:justify-center md:gap-4 md:w-full md:p-3">
                 <button
                   onClick={() => handleMove("attack")}
                   disabled={Boolean(
@@ -451,19 +557,19 @@ function Battle() {
                 </button>
               </div>
 
-              {/* Keep the overlay messages */}
+              {/* Responsive overlay messages */}
               {gameState.myMove && !gameState.opponentMoved && (
                 <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-40"
                 >
-                  <div className="bg-gray-900 border-4 border-t-gray-700 border-l-gray-700 border-b-gray-950 border-r-gray-950 p-6 rounded-lg">
-                    <div className="text-center text-xl font-bold text-white animate-pulse">
+                  <div className="bg-gray-900 border-4 border-t-gray-700 border-l-gray-700 border-b-gray-950 border-r-gray-950 p-4 md:p-6 rounded-lg">
+                    <div className="text-center text-sm md:text-xl font-bold text-white animate-pulse">
                       Waiting for opponent&apos;s move...
                     </div>
                     <div className="flex justify-center mt-3 space-x-1">
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                      <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
                     </div>
                   </div>
                 </div>
@@ -473,8 +579,8 @@ function Battle() {
                 <div
                   className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pixelated z-50"
                 >
-                  <div className={`bg-gray-900 border-8 ${gameOver === "win" ? "border-yellow-500" : "border-red-700"} p-8 rounded-lg shadow-lg`}>
-                    <div className={`text-center text-3xl font-bold ${gameOver === "win" ? "text-yellow-400" : "text-red-500"}`}>
+                  <div className={`bg-gray-900 border-4 md:border-8 ${gameOver === "win" ? "border-yellow-500" : "border-red-700"} p-4 md:p-8 rounded-lg shadow-lg`}>
+                    <div className={`text-center text-xl md:text-3xl font-bold ${gameOver === "win" ? "text-yellow-400" : "text-red-500"}`}>
                       {yourPlayer.gameOver !== "" &&
                       yourPlayer.gameOver === opponentPlayer.gameOver
                         ? "DRAW!"
@@ -483,8 +589,8 @@ function Battle() {
                         : "YOU LOST!"}
                     </div>
                     {gameOver === "win" && (
-                      <div className="mt-4 flex justify-center">
-                        <div className="text-yellow-300 text-xl">★ ★ ★</div>
+                      <div className="mt-2 md:mt-4 flex justify-center">
+                        <div className="text-yellow-300 text-lg md:text-xl">★ ★ ★</div>
                       </div>
                     )}
                   </div>
@@ -495,13 +601,20 @@ function Battle() {
         </div>
       </div>
 
-      {/* Add a style tag for pixelated font */}
+      {/* Add a style tag for pixelated font and responsive styles */}
       <style jsx global>{`
         .pixelated {
           image-rendering: pixelated;
           font-family: monospace;
           letter-spacing: -1px;
           text-shadow: 2px 2px 0 #000;
+        }
+        
+        @media (max-width: 768px) {
+          .pixelated {
+            letter-spacing: -0.5px;
+            text-shadow: 1px 1px 0 #000;
+          }
         }
       `}</style>
     </>
