@@ -104,7 +104,6 @@ export default function CreateP2PListingPage() {
   const [selectedNFT, setSelectedNFT] = useState<BlockmonData | null>(null);
   const [price, setPrice] = useState<string>("");
   const [nfcHash, setNfcHash] = useState<string>("");
-  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>("");
   const [isScanning, setIsScanning] = useState(false);
   const [nfcVerified, setNfcVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +123,7 @@ export default function CreateP2PListingPage() {
   }, []);
 
   // Handle successful NFC scan
-  const handleNFCScan = async (hash: string, serialNumber: string) => {
+  const handleNFCScan = async (hash: string) => {
     if (!isConnected || !walletProvider) {
       setError("Please connect your wallet first");
       return;
@@ -185,7 +184,6 @@ export default function CreateP2PListingPage() {
 
       setSelectedNFT(nft);
       setNfcHash(hash);
-      setNfcSerialNumber(serialNumber);
       setNfcVerified(true);
       setError(null);
 
@@ -261,7 +259,6 @@ export default function CreateP2PListingPage() {
         price,
         nfcHash,
         walletProvider as Eip1193Provider,
-        nfcSerialNumber // Pass the serial number if your API supports it
       );
 
       if (success) {

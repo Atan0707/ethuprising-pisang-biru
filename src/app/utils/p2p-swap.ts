@@ -868,7 +868,6 @@ export const claimBackP2PListing = async (
   tokenId: number,
   nfcHash: string,
   walletProvider: Eip1193Provider,
-  nfcSerialNumber?: string
 ): Promise<boolean> => {
   try {
     // Get signer and contract instance
@@ -876,10 +875,7 @@ export const claimBackP2PListing = async (
     const p2pSwapContract = await getP2PSwapContract(signer);
 
     // If we have a serial number, combine it with the hash for extra security
-    let hashData = nfcHash;
-    if (nfcSerialNumber) {
-      hashData = `${nfcHash}`;
-    }
+    const hashData = nfcHash;
 
     // Claim back the listing
     const claimTx = await p2pSwapContract.claimListing(

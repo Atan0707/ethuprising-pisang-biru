@@ -40,7 +40,6 @@ export default function P2PSwapPage() {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nfcHash, setNfcHash] = useState<string>("");
-  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -56,7 +55,7 @@ export default function P2PSwapPage() {
   }, []);
 
   // Function to handle NFC scanning or manual hash input
-  const handleScan = async (hash: string, serialNumber: string) => {
+    const handleScan = async (hash: string) => {
     if (!isConnected || !walletProvider) {
       setError("Please connect your wallet first");
       return;
@@ -80,7 +79,6 @@ export default function P2PSwapPage() {
       console.log("Scan hash:", formattedHash); // Debug log
 
       setNfcHash(formattedHash); // Store the formatted hash
-      setNfcSerialNumber(serialNumber);
 
       // Get the contract instance with signer
       const provider = new ethers.BrowserProvider(
@@ -103,11 +101,6 @@ export default function P2PSwapPage() {
 
       if (!blockmonData) {
         throw new Error("Failed to fetch Blockmon data");
-      }
-
-      // Store the serial number for future verification if provided
-      if (serialNumber) {
-        localStorage.setItem(`nft_${tokenId}_serial`, serialNumber);
       }
 
       // Fetch the listing details for this token ID
@@ -165,7 +158,6 @@ export default function P2PSwapPage() {
         scannedListing.price,
         nfcHash, // Use the already formatted hash from handleScan
         walletProvider as Eip1193Provider,
-        nfcSerialNumber
       );
 
       if (success) {

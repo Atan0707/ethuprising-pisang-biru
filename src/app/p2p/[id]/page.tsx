@@ -15,7 +15,6 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nfcHash, setNfcHash] = useState<string>('');
-  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [nfcVerified, setNfcVerified] = useState(false);
   const [nfcError, setNfcError] = useState<string | null>(null);
@@ -57,9 +56,8 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
   }, [mounted, params]);
 
   // Handle successful NFC scan
-  const handleNFCScan = (hash: string, serialNumber: string) => {
+  const handleNFCScan = (hash: string) => {
     setNfcHash(hash);
-    setNfcSerialNumber(serialNumber);
     setNfcVerified(true);
     setIsScanning(false);
     setNfcError(null);
@@ -91,7 +89,6 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
         listing.price,
         nfcHash,
         walletProvider as Eip1193Provider,
-        nfcSerialNumber
       );
       
       if (success) {
