@@ -104,6 +104,7 @@ function Page() {
       name: pokemon.name,
       baseDamage: pokemon.baseDamage.toString(),
       health: pokemon.hp.toString(),
+      tokenId: pokemon.tokenId.toString(),
     });
 
     // Redirect to battle page with parameters

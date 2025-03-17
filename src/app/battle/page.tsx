@@ -153,7 +153,7 @@ function Battle() {
   }, []);
 
   useEffect(() => {
-    const socketUrl = "http://167.99.77.31:3006";
+    const socketUrl = "http://localhost:3006/";
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
@@ -217,16 +217,18 @@ function Battle() {
           damagePerAttack: data.opponentData.baseDamage,
         });
       }
+    });
 
-      newSocket.on("opponentMoved", () => {
-        setGameState((prev) => ({
-          ...prev,
-          opponentMoved: true,
-        }));
-      });
+    newSocket.on("opponentMoved", () => {
+      console.log("Opponent made their move");
+      setGameState((prev) => ({
+        ...prev,
+        opponentMoved: true,
+      }));
     });
 
     newSocket.on("roundResult", (data) => {
+      // Reset the game state for the next round
       setGameState((prev) => ({
         ...prev,
         status: "playing",
@@ -357,7 +359,12 @@ function Battle() {
     return () => {
       newSocket.disconnect();
     };
-  }, [playerData?.health, playerData?.baseDamage, opponentData?.health, opponentData?.baseDamage]);
+  }, [
+    playerData?.health,
+    playerData?.baseDamage,
+    opponentData?.health,
+    opponentData?.baseDamage,
+  ]);
 
   const handleJoinGame = () => {
     if (socket && playerData) {
