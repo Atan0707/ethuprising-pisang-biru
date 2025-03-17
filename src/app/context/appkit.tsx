@@ -26,14 +26,7 @@ createAppKit({
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
     email: true,
-    socials: [
-      'google',
-      'x',
-      'github',
-      'apple',
-      'facebook',
-      'farcaster',
-    ]
+    socials: ["google", "x", "github", "apple", "facebook", "farcaster"],
   },
 });
 
