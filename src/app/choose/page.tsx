@@ -4,7 +4,7 @@ import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { useEffect, useState } from "react";
-
+import Image from "next/image";
 // Define a type for our Pokemon data
 interface PokemonData {
   tokenId: number;
@@ -44,21 +44,21 @@ function Page() {
           if (owner.toLowerCase() === address.toLowerCase()) {
             const [
               name,
-              _attribute,
-              _rarity,
-              _level,
+              // _attribute,
+              // _rarity,
+              // _level,
               hp,
               baseDamage,
-              _battleCount,
-              _battleWins,
-              _birthTime,
-              _lastBattleTime,
-              _claimed,
-              _tokenOwner,
+              // _battleCount,
+              // _battleWins,
+              // _birthTime,
+              // _lastBattleTime,
+              // _claimed,
+              // _tokenOwner,
               tokenURI,
-              _age,
-              _experience,
-              _hasEvolved,
+              // _age,
+              // _experience,
+              // _hasEvolved,
             ] = await contract.getBlocknogotchi(tokenId);
 
             ownedPokemon.push({
@@ -70,6 +70,7 @@ function Page() {
             });
           }
         } catch (error) {
+          console.log("error: ", error);
           continue;
         }
       }
@@ -125,7 +126,7 @@ function Page() {
                 onClick={() => selectPokemon(pokemon)}
               >
                 <h2 className="text-xl font-bold">{pokemon.name}</h2>
-                <img
+                <Image
                   src={pokemon.tokenURI}
                   alt={pokemon.name}
                   className="w-full h-48 object-cover"

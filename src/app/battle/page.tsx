@@ -357,7 +357,7 @@ function Battle() {
     return () => {
       newSocket.disconnect();
     };
-  }, []);
+  }, [playerData?.health, playerData?.baseDamage, opponentData?.health, opponentData?.baseDamage]);
 
   const handleJoinGame = () => {
     if (socket && playerData) {
