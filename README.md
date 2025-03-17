@@ -1,23 +1,33 @@
-# Blocknogotchi
+# [Blocknogotchi](https://www.blocknogotchi.fun/)
 
 Blocknogotchi is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world.
 
-![image](https://github.com/user-attachments/assets/252fe6c7-e293-451f-a938-efd36e096f41)
+Checkout here: [https://www.blocknogotchi.fun/](https://www.blocknogotchi.fun/)
+
+![image](https://github.com/user-attachments/assets/3012dad3-4be4-40de-8456-24edf843d96b)
+
 
 ## Features
 
 - **Mint NFT Pets**: Create unique virtual pets with different species and attributes
 - **Arena**: Fight together with your buddy and be the best!
 - **NFC Integration**: Use NFC cards to claim and interact with your pets
-- **Marketplace**: Trade your NFT card in the marketplace
+- **P2P Swap**: Introducing Person-to-Person swap, where you need to swap your NFT physically
+- **Community Fund**: Community fund is sourced from NFT sales and also a percent of the swap transaction for community to hold their own event on DAO
 
 ## Project Architechture
 
-![image](https://github.com/user-attachments/assets/807e0267-f680-402a-a19c-b679f73ed965)
+![image](https://github.com/user-attachments/assets/bf6dba1c-ca8d-4fa5-b3df-3361a2f1f639)
 
 - Contract Owner will mint the NFC and store the claim hash inside a NFC card
 - User will claim the NFT via NFC with claim hash stored in it.
 - All the data queried using The Graph
+
+![image](https://github.com/user-attachments/assets/68a02bcc-a747-48cf-9e5c-bb30fdea5b42)
+
+- Data will be fetched from contract metadata
+- User will fight another user off-chain using the nft metadata
+- Battle recorded on-chain
 
 ## Getting Started
 
@@ -52,18 +62,14 @@ yarn dev
 
 ## Contract
 
-- NFT Contract - https://sepolia.scrollscan.com/address/0xb5960bda72dba8693c4376bca91c166e10cde75a
-- Marketplace contract - https://sepolia.scrollscan.com/address/0xb5960bda72dba8693c4376bca91c166e10cde75a
+- Blocknogotchi Contract - [https://sepolia.scrollscan.com/address/0x42d6c92e2d768a8555b4a8941aff1e9528ca8586](https://sepolia.scrollscan.com/address/0x42d6c92e2d768a8555b4a8941aff1e9528ca8586)
+- P2P contract - [https://sepolia.scrollscan.com/address/0xe3512091dfcc852fd8c053153f2a8df70170ce77](https://sepolia.scrollscan.com/address/0xe3512091dfcc852fd8c053153f2a8df70170ce77)
 
 ## Subgraph
 
-- NFT Contract Subgraph - https://thegraph.com/studio/subgraph/ethuprising/
-- Marketplace Subgraph - https://thegraph.com/studio/subgraph/blockmon-marketplace/
-- The Graph repo - https://github.com/Atan0707/ethuprising-thegraph
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Blocknogotchi Contract Subgraph - [https://thegraph.com/studio/subgraph/blocknogotchi-contract/](https://thegraph.com/studio/subgraph/blocknogotchi-contract/)
+- P2P Subgraph - [https://thegraph.com/studio/subgraph/blocknogotchi-escrow/](https://thegraph.com/studio/subgraph/blocknogotchi-escrow/)
+- The Graph repo - [https://github.com/Atan0707/ethuprising-thegraph](https://github.com/Atan0707/ethuprising-thegraph)
 
 ## Acknowledgments
 
@@ -150,39 +156,8 @@ The NFC functionality is implemented using the Web NFC API, which allows web app
 - `src/app/utils/nfc.ts`: NFC utility functions
 - `src/app/utils/p2p-swap.ts`: P2P swap functionality
 - `src/app/p2p/create/page.tsx`: P2P listing creation page
-
-### Adding NFC Support to New Pages
-
-To add NFC support to a new page:
-
-1. Import the NFC utilities:
-   ```typescript
-   import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc';
-   ```
-
-2. Check if NFC is supported:
-   ```typescript
-   const [nfcSupported, setNfcSupported] = useState(false);
-   
-   useEffect(() => {
-     if (typeof window !== 'undefined') {
-       setNfcSupported(isNfcSupported());
-     }
-   }, []);
-   ```
-
-3. Implement NFC scanning:
-   ```typescript
-   const handleScanNFC = async () => {
-     try {
-       const serialNumber = await getNfcSerialNumber();
-       const nfcData = await readFromNfcTag();
-       // Process the NFC data
-     } catch (error) {
-       // Handle errors
-     }
-   };
-   ```
+- `src/app/battle/page.tsx`: Battle page
+-  `war.mjs`: WebSocket file (hosted on Digital Ocean)
 
 ## License
 
