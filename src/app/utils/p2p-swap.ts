@@ -742,7 +742,6 @@ export const createP2PListing = async (
   price: string,
   nfcHash: string,
   walletProvider: Eip1193Provider,
-  nfcSerialNumber?: string
 ): Promise<boolean> => {
   try {
     // Get signer and contract instances
@@ -777,10 +776,7 @@ export const createP2PListing = async (
     const priceInWei = ethers.parseEther(price);
 
     // If we have a serial number, combine it with the hash for extra security
-    let hashData = nfcHash;
-    if (nfcSerialNumber) {
-      hashData = `${nfcHash}:${nfcSerialNumber}`;
-    }
+    const hashData = nfcHash;
 
     // Create the listing
     const createTx = await p2pSwapContract.createListing(
@@ -805,7 +801,6 @@ export const purchaseP2PListing = async (
   price: string,
   nfcHash: string,
   walletProvider: Eip1193Provider,
-  nfcSerialNumber?: string
 ): Promise<boolean> => {
   try {
     // Get signer and contract instance

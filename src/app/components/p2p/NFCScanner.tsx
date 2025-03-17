@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc'
+import { isNfcSupported, readFromNfcTag } from '@/app/utils/nfc'
 import { Button } from '@/components/ui/button'
 
 interface NFCScannerProps {
   isScanning: boolean
   setIsScanning: (scanning: boolean) => void
-  onScan: (hash: string, serialNumber: string) => void
+  onScan: (hash: string) => void
   error: string | null
 }
 
@@ -42,9 +42,6 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
     })
     
     try {
-      // Get the serial number first for verification
-      const serialNumber = await getNfcSerialNumber()
-      
       // Then read the data from the NFC tag
       const nfcData = await readFromNfcTag({ timeoutMs: 15000 }) // 15 second timeout
       
@@ -55,9 +52,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
       
       // Ensure the hash is in the correct format
       const hash = nfcData.startsWith('0x') ? nfcData : `0x${nfcData}`
-      
-      // Combine hash and serial number for verification
-      const hashData = serialNumber ? `${hash}:${serialNumber}` : hash
+        
       
       toast.dismiss(scanToastId)
       toast.success('NFC Card Detected', {
@@ -65,7 +60,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
         icon: '✅',
       })
       
-      onScan(hashData, serialNumber)
+      onScan(hash)
     } catch (error) {
       console.error('Error scanning NFC:', error)
       setIsScanning(false)
@@ -97,7 +92,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
         description: 'Submitting the hash you entered...',
         icon: '🔍',
       })
-      onScan(manualHash.trim(), '')
+      onScan(manualHash.trim())
     } else {
       toast.error('Empty Hash', {
         description: 'Please enter a valid hash.',
