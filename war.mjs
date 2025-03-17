@@ -35,6 +35,7 @@ io.on("connection", (socket) => {
     // handle join game with player data
     socket.on("joinGame", (playerData) => {
         console.log(`Player ${socket.id} wants to join the game with data:`, playerData)
+        // Now playerData includes: imageUrl, name, baseDamage, health, and tokenId
 
         if (waitingPlayer.length > 0) {
             const opponentId = waitingPlayer[0].id;
@@ -46,30 +47,60 @@ io.on("connection", (socket) => {
             socket.join(gameId)
             io.sockets.sockets.get(opponentId).join(gameId);
 
+            // Log the data being sent to each player
+            console.log('Sending to first player:', {
+                gameId,
+                opponent: true,
+                opponentData
+            });
+
+            io.to(socket.id).emit("gameStart", {
+                gameId,
+                opponent: true,
+                opponentData  // This should include the tokenId
+            });
+
+            console.log('Sending to second player:', {
+                gameId,
+                opponent: true,
+                opponentData: playerData
+            });
+
+            io.to(opponentId).emit("gameStart", {
+                gameId,
+                opponent: true,
+                opponentData: playerData
+            });
+
             activeGames[gameId] = {
                 players: [
-                    { id: socket.id, data: playerData },
-                    { id: opponentId, data: opponentData }
+                    {
+                        id: socket.id,
+                        data: {
+                            ...playerData,
+                            tokenId: playerData.tokenId // Ensure tokenId is included
+                        }
+                    },
+                    {
+                        id: opponentId,
+                        data: {
+                            ...opponentData,
+                            tokenId: opponentData.tokenId // Ensure tokenId is included
+                        }
+                    }
                 ],
                 gameId: gameId,
                 moves: {},
             }
 
-            // Send game start event with opponent data to both players
-            io.to(socket.id).emit("gameStart", {
-                gameId: gameId,
-                opponent: true,
-                opponentData: opponentData
-            })
-
-            io.to(opponentId).emit("gameStart", {
-                gameId: gameId,
-                opponent: true,
-                opponentData: playerData
-            })
-
         } else {
-            waitingPlayer.push({ id: socket.id, playerData: playerData })
+            waitingPlayer.push({
+                id: socket.id,
+                playerData: {
+                    ...playerData,
+                    tokenId: playerData.tokenId // Ensure tokenId is stored
+                }
+            })
             socket.emit("waiting");
             console.log(`Player ${socket.id} is waiting for an opponent`)
         }
