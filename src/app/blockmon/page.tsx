@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getBlocknogotchiContract } from '../utils/contractUtils';
+import { ethers, Eip1193Provider } from 'ethers';
+import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
+import Blocknogotchi from "@/contract/BlocknogotchiContract.json";
+import { useAppKitProvider } from '@reown/appkit/react';
 
 interface NFCReadingStatus {
   status: 'idle' | 'reading' | 'success' | 'error';
@@ -22,6 +25,9 @@ export default function BlockmonScanPage() {
   // We're using scannedId in the UI indirectly through readingStatus.message
   const [, setScannedId] = useState<string | null>(null);
   const router = useRouter();
+  
+  // Use reown wallet integration
+  const { walletProvider } = useAppKitProvider('eip155');
 
   // Check if NFC is supported
   useEffect(() => {
@@ -51,7 +57,9 @@ export default function BlockmonScanPage() {
               
               // Assuming the text contains the blockmon ID
               // Format could be "blockmon:123" or just "123"
-              const contract = await getBlocknogotchiContract();
+              const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
+              const signer = await provider.getSigner();
+              const contract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, Blocknogotchi.abi, signer);
               const blockmonId = await contract.getTokenIdFromHash(text);
               console.log('blockmonId', blockmonId);
               setScannedId(blockmonId);
