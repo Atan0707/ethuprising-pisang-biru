@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import Image from "next/image";
 
@@ -34,6 +34,7 @@ interface ClientToServerEvents {
     name: string;
     baseDamage: number;
     health: number;
+    tokenId: string;
   }) => void;
   makeMove: (data: { gameId: string; move: string }) => void;
 }
@@ -47,6 +48,7 @@ interface ServerToClientEvents {
       name: string;
       baseDamage: number;
       health: number;
+      tokenId: string;
     };
   }) => void;
   waiting: () => void;
@@ -58,6 +60,21 @@ interface ServerToClientEvents {
     manaGained: string[];
   }) => void;
 }
+
+// Update the interface for opponent data
+interface OpponentData {
+  imageUrl: string;
+  name: string;
+  baseDamage: number;
+  health: number;
+  tokenId: string;
+}
+
+/* eslint-disable react-hooks/exhaustive-deps */
+
+// The useEffect dependencies are intentionally limited to prevent infinite loops
+// and unnecessary re-renders. The other values are handled within the state updates.
+
 function Battle() {
   const [socket, setSocket] = useState<Socket<
     ServerToClientEvents,
@@ -120,12 +137,123 @@ function Battle() {
   } | null>(null);
 
   // Add opponent data state
-  const [opponentData, setOpponentData] = useState<{
-    imageUrl: string;
-    name: string;
-    baseDamage: number;
-    health: number;
-  } | null>(null);
+  const [opponentData, setOpponentData] = useState<OpponentData | null>(null);
+
+  // Add state for transaction status
+  const [transactionStatus, setTransactionStatus] = useState<string>("");
+
+  // Add this near the top of your Battle component
+  const opponentDataRef = useRef<OpponentData | null>(null);
+
+  // Add this state to track if a transaction is in progress
+  const [isRecording, setIsRecording] = useState(false);
+
+  // Add this state to track if we're waiting for transaction confirmation
+  const [transactionTimeout, setTransactionTimeout] =
+    useState<NodeJS.Timeout | null>(null);
+
+  // Update the recordBattleResult function
+  const recordBattleResult = async (
+    winnerTokenId: string,
+    loserTokenId: string
+  ) => {
+    if (isRecording) {
+      console.log("Transaction already in progress, skipping...");
+      return;
+    }
+
+    try {
+      setIsRecording(true);
+      console.log("Recording battle result:", { winnerTokenId, loserTokenId });
+      setTransactionStatus("Recording battle result...");
+
+      // Add retries for getting the transaction hash
+      let retries = 3;
+      let response;
+
+      while (retries > 0) {
+        response = await fetch("/api/recordBattle", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            winnerTokenId,
+            loserTokenId,
+          }),
+        });
+
+        const data = await response.json();
+        console.log("Battle recording response:", data);
+
+        if (data.success && data.transactionHash) {
+          setTransactionStatus(
+            `Battle recorded! Transaction: ${data.transactionHash}`
+          );
+          break;
+        } else if (retries > 1) {
+          // Wait 2 seconds before retrying
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          retries--;
+        } else {
+          setTransactionStatus(data.error || "Failed to get transaction hash");
+          break;
+        }
+      }
+    } catch (error) {
+      console.error("Error recording battle:", error);
+      setTransactionStatus(
+        "Error recording battle: " + (error as Error).message
+      );
+    } finally {
+      // Add a delay before allowing new transactions
+      setTimeout(() => {
+        setIsRecording(false);
+      }, 5000);
+    }
+  };
+
+  // Update the handleGameOver function with logging
+  const handleGameOver = (result: "win" | "lose" | "draw") => {
+    console.log("Game over:", { result });
+    console.log("Current opponent data from ref:", opponentDataRef.current);
+    setGameOver(result);
+
+    if (result !== "draw") {
+      const params = new URLSearchParams(window.location.search);
+      const yourTokenId = params.get("tokenId");
+      const opponentTokenId = opponentDataRef.current?.tokenId;
+
+      console.log("Token IDs for battle recording:", {
+        yourTokenId,
+        opponentTokenId,
+        fullOpponentData: opponentDataRef.current,
+      });
+
+      if (yourTokenId && opponentTokenId) {
+        if (result === "win") {
+          console.log("Recording win:", {
+            winner: yourTokenId,
+            loser: opponentTokenId,
+          });
+          recordBattleResult(yourTokenId, opponentTokenId);
+        } else {
+          console.log("Recording loss:", {
+            winner: opponentTokenId,
+            loser: yourTokenId,
+          });
+          recordBattleResult(opponentTokenId, yourTokenId);
+        }
+      } else {
+        console.error("Missing token IDs:", {
+          yourTokenId,
+          opponentTokenId,
+          opponentData: opponentDataRef.current,
+          params: Object.fromEntries(params),
+        });
+      }
+    }
+  };
 
   // Modify useEffect to set initial player states from URL params
   useEffect(() => {
@@ -153,7 +281,7 @@ function Battle() {
   }, []);
 
   useEffect(() => {
-    const socketUrl = "http://167.99.77.31:3006";
+    const socketUrl = "https://www.harizhakim.xyz";
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
@@ -193,7 +321,9 @@ function Battle() {
     });
 
     newSocket.on("gameStart", (data) => {
-      console.log("Game started!", data);
+      console.log("Game started with full data:", data);
+      console.log("Opponent data received:", data.opponentData);
+
       setGameState({
         gameId: data.gameId,
         status: "playing",
@@ -202,16 +332,28 @@ function Battle() {
         opponentMoved: false,
       });
 
-      // Set opponent's data from the server
       if (data.opponentData) {
-        setOpponentData(data.opponentData);
+        const opponentInfo = {
+          imageUrl: data.opponentData.imageUrl,
+          name: data.opponentData.name,
+          baseDamage: data.opponentData.baseDamage,
+          health: data.opponentData.health,
+          tokenId: data.opponentData.tokenId,
+        };
+
+        console.log(
+          "Setting opponent data with tokenId:",
+          opponentInfo.tokenId
+        );
+        opponentDataRef.current = opponentInfo; // Store in ref
+        setOpponentData(opponentInfo);
+
         setOpponentPlayer((prev) => ({
           ...prev,
           health: data.opponentData.health,
           healthPercent: 100,
         }));
 
-        // Update OPPONENT constant with opponent data
         Object.assign(OPPONENT, {
           health: data.opponentData.health,
           damagePerAttack: data.opponentData.baseDamage,
@@ -272,7 +414,8 @@ function Battle() {
         let newMana = prev.mana;
 
         if (data.damageTo === "you" || data.damageTo === "both") {
-          newHealth -= opponentData?.baseDamage || OPPONENT.damagePerAttack;
+          newHealth -=
+            opponentDataRef.current?.baseDamage || OPPONENT.damagePerAttack;
         }
 
         // Handle mana changes
@@ -284,10 +427,13 @@ function Battle() {
         }
 
         newHealth = Math.max(0, newHealth);
-        let playerGameOver = "";
+        const playerGameOver = "";
         if (newHealth <= 0) {
-          setGameOver("lose");
-          playerGameOver = "lose";
+          if (opponentPlayer.health <= 0) {
+            handleGameOver("draw");
+          } else {
+            handleGameOver("lose");
+          }
         }
 
         return {
@@ -316,10 +462,13 @@ function Battle() {
         }
 
         newHealth = Math.max(0, newHealth);
-        let playerGameOver = "";
+        const playerGameOver = "";
         if (newHealth <= 0) {
-          setGameOver("win");
-          playerGameOver = "lose";
+          if (yourPlayer.health <= 0) {
+            handleGameOver("draw");
+          } else {
+            handleGameOver("win");
+          }
         }
 
         return {
@@ -357,11 +506,16 @@ function Battle() {
     return () => {
       newSocket.disconnect();
     };
-  }, [playerData?.health, playerData?.baseDamage, opponentData?.health, opponentData?.baseDamage]);
+  }, []);
 
   const handleJoinGame = () => {
     if (socket && playerData) {
-      socket.emit("joinGame", playerData);
+      const params = new URLSearchParams(window.location.search);
+      const tokenId = params.get("tokenId");
+      socket.emit("joinGame", {
+        ...playerData,
+        tokenId: tokenId || "",
+      });
     }
   };
 
@@ -377,6 +531,15 @@ function Battle() {
       }));
     }
   };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (transactionTimeout) {
+        clearTimeout(transactionTimeout);
+      }
+    };
+  }, [transactionTimeout]);
 
   return (
     <>
@@ -793,13 +956,17 @@ function Battle() {
                         gameOver === "win" ? "text-yellow-400" : "text-red-500"
                       }`}
                     >
-                      {yourPlayer.gameOver !== "" &&
-                      yourPlayer.gameOver === opponentPlayer.gameOver
+                      {gameOver === "draw"
                         ? "DRAW!"
                         : gameOver === "win"
                         ? "YOU WON!"
                         : "YOU LOST!"}
                     </div>
+                    {gameOver !== "draw" && (
+                      <div className="mt-2 text-sm text-gray-300 break-all">
+                        {transactionStatus}
+                      </div>
+                    )}
                     {gameOver === "win" && (
                       <div className="mt-2 md:mt-4 flex justify-center">
                         <div className="text-yellow-300 text-lg md:text-xl">

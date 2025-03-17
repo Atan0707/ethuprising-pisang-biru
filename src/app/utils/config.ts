@@ -14,4 +14,4 @@ export const GRAPH_MARKETPLACE_URL =
   "https://api.studio.thegraph.com/query/105196/blockmon-marketplace/version/latest";
 export const RPC_URL = "https://sepolia-rpc.scroll.io/";
 
-export const war_url = "http://167.99.77.31:3006";
+export const war_url = "https://www.harizhakim.xyz";
