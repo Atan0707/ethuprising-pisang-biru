@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { Eip1193Provider, ethers } from "ethers";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
@@ -44,21 +45,21 @@ function Page() {
           if (owner.toLowerCase() === address.toLowerCase()) {
             const [
               name,
-              // _attribute,
-              // _rarity,
-              // _level,
+              _attribute,
+              _rarity,
+              _level,
               hp,
               baseDamage,
-              // _battleCount,
-              // _battleWins,
-              // _birthTime,
-              // _lastBattleTime,
-              // _claimed,
-              // _tokenOwner,
+              _battleCount,
+              _battleWins,
+              _birthTime,
+              _lastBattleTime,
+              _claimed,
+              _tokenOwner,
               tokenURI,
-              // _age,
-              // _experience,
-              // _hasEvolved,
+              _age,
+              _experience,
+              _hasEvolved,
             ] = await contract.getBlocknogotchi(tokenId);
 
             ownedPokemon.push({
@@ -126,7 +127,7 @@ function Page() {
                 onClick={() => selectPokemon(pokemon)}
               >
                 <h2 className="text-xl font-bold">{pokemon.name}</h2>
-                <Image
+                <img
                   src={pokemon.tokenURI}
                   alt={pokemon.name}
                   className="w-full h-48 object-cover"
