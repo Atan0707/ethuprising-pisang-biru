@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -17,6 +18,7 @@ import {
   updatePosition as emitUpdatePosition,
   sendMessage as emitSendMessage
 } from "../services/socketService";
+import Image from "next/image";
 
 // Define event interface
 interface Event {
@@ -455,7 +457,7 @@ export default function EventPage() {
                     Event Map
                   </h2>
                   <p className="text-gray-300 mb-4 font-pixel tracking-wide">
-                    Click on the map to move your character. Interact with other trainers when you're close to them.
+                    Click on the map to move your character. Interact with other trainers when you&apos;re close to them.
                   </p>
                   
                   {/* Map Area */}
@@ -493,7 +495,7 @@ export default function EventPage() {
                             zIndex: 20,
                           }}
                         >
-                          <img
+                          <Image
                             src={player.id === socket?.id ? PLAYER_AVATAR : OPPONENT_AVATAR}
                             alt={player.name}
                             className="w-full h-full object-cover"
@@ -664,7 +666,7 @@ export default function EventPage() {
               
               <div className="flex items-center mb-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 mr-4">
-                  <img 
+                  <Image 
                     src={selectedPlayer.blockmon.image}
                     alt={selectedPlayer.name}
                     className="w-full h-full object-cover"
@@ -686,7 +688,7 @@ export default function EventPage() {
                 <h4 className="text-gray-400 text-sm mb-2">Main Blockmon</h4>
                 <div className="flex items-center">
                   <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 mr-3">
-                    <img 
+                    <Image 
                       src={selectedPlayer.blockmon.image}
                       alt={selectedPlayer.blockmon.name}
                       className="w-full h-full object-cover"

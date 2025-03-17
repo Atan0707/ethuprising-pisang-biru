@@ -80,42 +80,48 @@ export default function LeaderboardByBattles() {
   }
   
   if (data?.battleCompleteds) {
+    // Group battles by tokenId to count them correctly
+    const battlesByToken: Record<string, { battles: number, wins: number, lastBattle: string }> = {};
+    
     data.battleCompleteds.forEach((battle: BattleData) => {
-      // Process winner
-      if (!battleStats[battle.tokenId]) {
-        battleStats[battle.tokenId] = {
-          tokenId: battle.tokenId,
-          totalBattles: 0,
+      const tokenId = battle.tokenId;
+      
+      if (!battlesByToken[tokenId]) {
+        battlesByToken[tokenId] = {
+          battles: 0,
           wins: 0,
-          lastBattle: battle.blockTimestamp
+          lastBattle: '0'
         };
       }
       
-      battleStats[battle.tokenId].totalBattles += 1;
+      // Increment battles count
+      battlesByToken[tokenId].battles += 1;
       
+      // Increment wins if won
       if (battle.won) {
-        battleStats[battle.tokenId].wins += 1;
+        battlesByToken[tokenId].wins += 1;
       }
       
-      if (parseInt(battle.blockTimestamp) > parseInt(battleStats[battle.tokenId].lastBattle)) {
-        battleStats[battle.tokenId].lastBattle = battle.blockTimestamp;
+      // Update last battle timestamp if newer
+      if (parseInt(battle.blockTimestamp) > parseInt(battlesByToken[tokenId].lastBattle)) {
+        battlesByToken[tokenId].lastBattle = battle.blockTimestamp;
       }
-      
-      // Process opponent (loser)
-      if (!battleStats[battle.opponentId]) {
-        battleStats[battle.opponentId] = {
-          tokenId: battle.opponentId,
+    });
+    
+    // Update battleStats with the correct counts
+    Object.entries(battlesByToken).forEach(([tokenId, stats]) => {
+      if (!battleStats[tokenId]) {
+        battleStats[tokenId] = {
+          tokenId,
           totalBattles: 0,
           wins: 0,
-          lastBattle: battle.blockTimestamp
+          lastBattle: '0'
         };
       }
       
-      battleStats[battle.opponentId].totalBattles += 1;
-      
-      if (parseInt(battle.blockTimestamp) > parseInt(battleStats[battle.opponentId].lastBattle)) {
-        battleStats[battle.opponentId].lastBattle = battle.blockTimestamp;
-      }
+      battleStats[tokenId].totalBattles = stats.battles;
+      battleStats[tokenId].wins = stats.wins;
+      battleStats[tokenId].lastBattle = stats.lastBattle;
     });
   }
 

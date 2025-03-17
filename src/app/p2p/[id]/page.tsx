@@ -8,14 +8,17 @@ import { toast } from 'sonner';
 import { Eip1193Provider } from 'ethers';
 import { getP2PListingDetails, purchaseP2PListing, cancelP2PListing, claimBackP2PListing, DetailedP2PListing } from '@/app/utils/p2p-swap';
 import { Button } from '@/components/ui/button';
+import NFCScanner from '@/app/components/p2p/NFCScanner';
 
 export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [listing, setListing] = useState<DetailedP2PListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nfcHash, setNfcHash] = useState<string>('');
+  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [nfcVerified, setNfcVerified] = useState(false);
+  const [nfcError, setNfcError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   
@@ -53,23 +56,13 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
     fetchListingDetails();
   }, [mounted, params]);
 
-  // Function to simulate NFC scanning
-  const handleScanNFC = () => {
-    setIsScanning(true);
-    
-    // Simulate NFC scanning process
-    setTimeout(() => {
-      // Generate a random hash to simulate NFC reading
-      const randomHash = Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
-      
-      const hash = `0x${randomHash}`;
-      setNfcHash(hash);
-      setNfcVerified(true);
-      setIsScanning(false);
-      toast.success('NFC card scanned and verified successfully!');
-    }, 2000);
+  // Handle successful NFC scan
+  const handleNFCScan = (hash: string, serialNumber: string) => {
+    setNfcHash(hash);
+    setNfcSerialNumber(serialNumber);
+    setNfcVerified(true);
+    setIsScanning(false);
+    setNfcError(null);
   };
 
   // Function to handle purchasing the NFT
@@ -97,7 +90,8 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
         listing.id,
         listing.price,
         nfcHash,
-        walletProvider as Eip1193Provider
+        walletProvider as Eip1193Provider,
+        nfcSerialNumber
       );
       
       if (success) {
@@ -106,7 +100,7 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
         
         // Redirect to the P2P swap page after a short delay
         setTimeout(() => {
-          router.push('/p2p-swap');
+          router.push('/p2p');
         }, 1500);
       }
     } catch (error) {
@@ -151,7 +145,7 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
         
         // Redirect to the P2P swap page after a short delay
         setTimeout(() => {
-          router.push('/p2p-swap');
+          router.push('/p2p');
         }, 1500);
       }
     } catch (error) {
@@ -202,7 +196,7 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
         
         // Redirect to the P2P swap page after a short delay
         setTimeout(() => {
-          router.push('/p2p-swap');
+          router.push('/p2p');
         }, 1500);
       }
     } catch (error) {
@@ -267,7 +261,7 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
             </p>
             <div className="mt-6">
               <button
-                onClick={() => router.push('/p2p-swap')}
+                onClick={() => router.push('/p2p')}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Back to P2P Swap
@@ -286,7 +280,7 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <button
-            onClick={() => router.push('/p2p-swap')}
+            onClick={() => router.push('/p2p')}
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -382,20 +376,12 @@ export default function P2PSwapDetailPage({ params }: { params: Promise<{ id: st
                       <span>NFC Card Verified</span>
                     </div>
                   ) : (
-                    <Button
-                      onClick={handleScanNFC}
-                      disabled={isScanning}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isScanning ? (
-                        <>
-                          <span className="animate-spin mr-2">⟳</span>
-                          Scanning...
-                        </>
-                      ) : (
-                        'Scan NFC Card'
-                      )}
-                    </Button>
+                    <NFCScanner
+                      isScanning={isScanning}
+                      setIsScanning={setIsScanning}
+                      onScan={handleNFCScan}
+                      error={nfcError}
+                    />
                   )}
                 </div>
               </div>

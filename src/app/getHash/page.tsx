@@ -12,6 +12,8 @@ export default function GetHashPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isNfcSupported, setIsNfcSupported] = useState<boolean>(false);
+  const [isNfcWriting, setIsNfcWriting] = useState<boolean>(false);
 
   // Use reown wallet integration
   const { open } = useAppKit();
@@ -43,6 +45,13 @@ export default function GetHashPage() {
 
     checkIfAdmin();
   }, [isConnected, walletProvider, address]);
+
+  // Check if NFC is supported
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'NDEFReader' in window) {
+      setIsNfcSupported(true);
+    }
+  }, []);
 
   const handleGetClaimHash = async () => {
     if (!isConnected || !walletProvider) {
@@ -87,6 +96,38 @@ export default function GetHashPage() {
     if (claimHash) {
       navigator.clipboard.writeText(claimHash);
       toast.success('Claim hash copied to clipboard');
+    }
+  };
+
+  const writeToNfc = async () => {
+    if (!claimHash) {
+      toast.error('No claim hash to write');
+      return;
+    }
+
+    if (!isNfcSupported) {
+      toast.error('NFC is not supported on this device');
+      return;
+    }
+
+    setIsNfcWriting(true);
+    toast.info('Tap your NFC tag to write the claim hash');
+
+    try {
+      // @ts-expect-error - NDEFReader might not be recognized by TypeScript
+      const ndef = new NDEFReader();
+      await ndef.write({
+        records: [
+          { recordType: "text", data: new TextEncoder().encode(claimHash) },
+          { recordType: "url", data: new TextEncoder().encode(`https://blocknogotchi.fun/claim?hash=${claimHash}`) }
+        ]
+      });
+      toast.success('Claim hash written to NFC tag successfully');
+    } catch (error) {
+      console.error('Error writing to NFC:', error);
+      toast.error('Failed to write to NFC tag. Please try again.');
+    } finally {
+      setIsNfcWriting(false);
     }
   };
 
@@ -160,15 +201,29 @@ export default function GetHashPage() {
               <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">Claim Hash</h3>
-                  <button
-                    onClick={copyToClipboard}
-                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={copyToClipboard}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy
+                    </button>
+                    {isNfcSupported && (
+                      <button
+                        onClick={writeToNfc}
+                        disabled={isNfcWriting}
+                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 text-sm flex items-center"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        {isNfcWriting ? 'Writing...' : 'Write to NFC'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
                   <code className="text-sm text-gray-800 dark:text-gray-200 break-all font-mono">
@@ -181,6 +236,16 @@ export default function GetHashPage() {
                     Keep this hash secure and only share it with the intended recipient.
                   </span>
                 </p>
+                {isNfcSupported && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-800 dark:text-green-300 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      NFC is supported on this device. You can write the claim hash to an NFC tag.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -189,6 +254,11 @@ export default function GetHashPage() {
               <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 The claim hash is a sensitive piece of information that allows anyone who possesses it to claim the associated Blocknogotchi. 
                 Always ensure you&apos;re on a secure connection and that no unauthorized persons can see your screen when viewing claim hashes.
+                {isNfcSupported && (
+                  <span className="block mt-2">
+                    When writing to an NFC tag, ensure you&apos;re in a secure location. Anyone with physical access to the NFC tag will be able to claim the Blocknogotchi.
+                  </span>
+                )}
               </p>
             </div>
           </div>

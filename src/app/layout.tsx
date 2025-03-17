@@ -13,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Blocknogotchi - ETHUprising",
-  description: "Blocknogotchi web application",
+  title: "Blocknogotchi",
+  description: "NFT Card Game",
 };
 
 export default function RootLayout({

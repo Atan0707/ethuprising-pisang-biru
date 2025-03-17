@@ -158,6 +158,12 @@ export interface BlockmonData {
   attribute: number;
   rarity: number;
   level: number;
+  hp?: number;
+  baseDamage?: number;
+  battleCount?: number;
+  battleWins?: number;
+  birthTime?: number;
+  lastBattleTime?: number;
   owner: string;
   tokenURI: string;
   claimed: boolean;
@@ -230,13 +236,13 @@ export interface HistoryItem {
 
 // Helper function to convert attribute number to string
 export const getAttributeString = (attribute: number): string => {
-  const attributes = ['NORMAL', 'FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'ICE', 'FIGHTING', 'POISON', 'GROUND', 'FLYING', 'PSYCHIC', 'BUG', 'ROCK', 'GHOST', 'DRAGON', 'DARK', 'STEEL', 'FAIRY'];
+  const attributes = ['FIRE', 'WATER', 'PLANT', 'ELECTRIC', 'EARTH', 'AIR', 'LIGHT', 'DARK'];
   return attributes[attribute] || 'UNKNOWN';
 };
 
 // Helper function to convert rarity number to string
 export const getRarityString = (rarity: number): string => {
-  const rarities = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
+  const rarities = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'];
   return rarities[rarity] || 'UNKNOWN';
 };
 

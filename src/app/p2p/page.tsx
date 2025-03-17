@@ -4,63 +4,158 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 // import Link from 'next/link';
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 // import { getAttributeString, getRarityString } from '@/app/utils/marketplace';
 import { 
   getP2PListingDetails, 
   // P2PListing, 
-  DetailedP2PListing } from '@/app/utils/p2p-swap';
+  DetailedP2PListing,
+  purchaseP2PListing } from '@/app/utils/p2p-swap';
+import { getBlocknogotchiContract } from '../utils/contractUtils';
+import NFCScanner from '@/app/components/p2p/NFCScanner';
+import ListingsGrid from '@/app/components/p2p/ListingsGrid';
+import BlocknogotchiImage from '@/app/components/BlocknogotchiImage';
+import { Eip1193Provider, ethers } from 'ethers';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function P2PSwapPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedListing, setScannedListing] = useState<DetailedP2PListing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nfcHash, setNfcHash] = useState<string>('');
+  const [nfcSerialNumber, setNfcSerialNumber] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   
   // Use reown wallet integration
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
 
-  // Ensure component is mounted to avoid hydration issues
+  // Ensure component is mounted
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Function to simulate NFC scanning
-  const handleScanNFC = async () => {
-    setIsScanning(true);
+  // Function to handle NFC scanning or manual hash input
+  const handleScan = async (hash: string, serialNumber: string) => {
+    if (!isConnected || !walletProvider) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    setIsLoading(true);
     setScannedListing(null);
+    setError(null);
+    setNfcHash(hash);
+    setNfcSerialNumber(serialNumber);
     
-    // Simulate NFC scanning process
-    setTimeout(async () => {
-      try {
-        // For demo purposes, we'll randomly select a token ID between 1 and 10
-        // In a real implementation, you would decode the NFC data to get the token ID
-        const tokenId = Math.floor(Math.random() * 10) + 1;
-        
-        // Fetch the listing details for this token ID
-        setIsLoading(true);
-        const listing = await getP2PListingDetails(tokenId);
-        
-        if (listing && listing.status === 'active') {
-          setScannedListing(listing);
-          toast.success('NFC card scanned successfully! Found an active listing.');
-        } else if (listing) {
-          toast.info(`This NFT is not currently for sale (Status: ${listing.status}).`);
-        } else {
-          toast.info('No active listing found for this NFC card.');
-        }
-      } catch (error) {
-        console.error('Error processing NFC scan:', error);
-        toast.error('Failed to process NFC scan');
-      } finally {
-        setIsScanning(false);
-        setIsLoading(false);
+    try {
+      // Get the contract instance with signer
+      const provider = new ethers.BrowserProvider(walletProvider as Eip1193Provider);
+      const signer = await provider.getSigner();
+      const contract = await getBlocknogotchiContract(signer);
+      
+      // Get token ID from hash
+      const tokenId = await contract.getTokenIdFromHash(hash);
+      console.log('Token ID:', tokenId);
+
+      if (tokenId.toString() === '0') {
+        throw new Error('This NFC card is not associated with any Blockmon');
       }
-    }, 2000);
+
+      // Get Blockmon data to verify it exists
+      const blockmonData = await contract.getBlocknogotchi(tokenId);
+      console.log('Blockmon Data:', blockmonData);
+
+      if (!blockmonData) {
+        throw new Error('Failed to fetch Blockmon data');
+      }
+
+      // Store the serial number for future verification if provided
+      if (serialNumber) {
+        localStorage.setItem(`nft_${tokenId}_serial`, serialNumber);
+      }
+
+      // Fetch the listing details for this token ID
+      const listing = await getP2PListingDetails(tokenId);
+      
+      if (listing && listing.status === 'active') {
+        setScannedListing(listing);
+        setIsModalOpen(true);
+        toast.success('Found an active listing!');
+      } else if (listing) {
+        toast.info(`This NFT is not currently for sale (Status: ${listing.status}).`);
+      } else {
+        toast.info('No active listing found for this NFT.');
+      }
+    } catch (error) {
+      console.error('Error processing scan:', error);
+      
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to process scan');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to handle purchasing the NFT
+  const handlePurchase = async () => {
+    if (!isConnected || !walletProvider) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+    
+    if (!scannedListing) {
+      toast.error('Listing details not available');
+      return;
+    }
+    
+    if (!nfcHash) {
+      toast.error('NFC verification required');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    toast.loading('Processing purchase...');
+    
+    try {
+      const success = await purchaseP2PListing(
+        scannedListing.id,
+        scannedListing.price,
+        nfcHash,
+        walletProvider as Eip1193Provider,
+        nfcSerialNumber
+      );
+      
+      if (success) {
+        toast.dismiss();
+        toast.success(`Successfully purchased Blockmon #${scannedListing.id}!`);
+        setIsModalOpen(false);
+        setScannedListing(null);
+      }
+    } catch (error) {
+      console.error('Error purchasing P2P listing:', error);
+      toast.dismiss();
+      toast.error('Failed to purchase NFT');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Function to handle creating a new P2P swap listing
@@ -117,43 +212,33 @@ export default function P2PSwapPage() {
                   onClick={handleCreateListing}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Sell Physical NFT
+                  Trade Blocknogotchi
                 </Button>
               </div>
             )}
           </div>
         </div>
 
+        
+
         {/* NFC Scan Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-blue-100 dark:bg-blue-900 mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Scan Your Blocknogotchi NFT Card</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              To view or purchase a Blocknogotchi, scan the NFC chip embedded in the card.
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Find Blocknogotchi Listings</h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Scan your NFC card or enter its hash to find available listings.
             </p>
-            <Button
-              onClick={handleScanNFC}
-              disabled={isScanning || isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-lg"
-            >
-              {isScanning ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Scanning...
-                </>
-              ) : (
-                'Scan NFC Card'
-              )}
-            </Button>
           </div>
+          
+          <NFCScanner
+            isScanning={isScanning}
+            setIsScanning={setIsScanning}
+            onScan={handleScan}
+            error={error}
+          />
         </div>
 
-        {/* Scanned Listing Details */}
+        {/* Loading State */}
         {isLoading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -161,92 +246,168 @@ export default function P2PSwapPage() {
           </div>
         )}
 
-        {scannedListing && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Found NFT Listing</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                This physical NFT card is available for purchase
-              </p>
-            </div>
-            
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row gap-8">
-                {/* NFT Image */}
-                <div className="w-full md:w-1/3">
-                  <div className="relative aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                    <Image
-                      src={scannedListing.image}
+        {/* Transaction Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-gray-900 text-white border border-gray-800">
+            {scannedListing && (
+              <>
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-800">
+                  <DialogTitle className="text-xl font-bold text-white">
+                    Blocknogotchi #{scannedListing.id}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-400">
+                    Review the details before purchasing this Blockmon
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="p-6">
+                  {/* NFT Image */}
+                  <div className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden mb-6 max-w-[200px] mx-auto">
+                    <BlocknogotchiImage
+                      tokenURI={scannedListing.rawData?.tokenURI || scannedListing.image}
                       alt={scannedListing.name}
-                      fill
-                      className="object-cover"
+                      width={200}
+                      height={200}
                     />
+                  </div>
+                  
+                  {/* NFT Details */}
+                  <div className="space-y-4">
+                    {/* Attribute Badge */}
+                    <div className="flex justify-center mb-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-900 text-blue-200 uppercase">
+                        {scannedListing.attribute}
+                      </span>
+                    </div>
+                    
+                    {/* Main Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">Rarity</p>
+                        <p className="font-medium text-white uppercase">{scannedListing.rarity}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Level</p>
+                        <p className="font-medium text-white">{scannedListing.level}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Seller</p>
+                        <p className="font-medium text-white">{formatAddress(scannedListing.seller)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Price</p>
+                        <p className="font-medium text-white flex items-center">
+                          <Image
+                            src="/eth-logo.svg"
+                            alt="ETH"
+                            width={16}
+                            height={16}
+                            className="mr-1"
+                          />
+                          {scannedListing.price} ETH
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Blocknogotchi Stats */}
+                    <div className="bg-gray-800 rounded-lg p-4 mt-4">
+                      <h3 className="text-sm font-semibold text-white mb-3">Blocknogotchi Stats</h3>
+                      <div className="grid grid-cols-2 gap-y-2">
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">HP:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.hp || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Base Damage:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.baseDamage || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Experience:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.experience || 0}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Birth Time:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.birthTime ? 
+                              new Date(Number(scannedListing.rawData.birthTime) * 1000).toLocaleDateString() : 
+                              'Unknown'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Battle Count:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.battleCount || 0}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-400">Battle Wins:</span>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm font-medium text-white">
+                            {scannedListing.rawData?.battleWins || 0}
+                          </span>
+                        </div>
+
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                {/* NFT Details */}
-                <div className="w-full md:w-2/3">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{scannedListing.name}</h3>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {scannedListing.attribute}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Rarity</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{scannedListing.rarity}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Level</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{scannedListing.level}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Seller</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{formatAddress(scannedListing.seller)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Price</p>
-                      <p className="font-medium text-gray-900 dark:text-white flex items-center">
-                        <Image
-                          src="/eth-logo.svg"
-                          alt="ETH"
-                          width={16}
-                          height={16}
-                          className="mr-1"
-                        />
-                        {scannedListing.price} ETH
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Description</p>
-                    <p className="text-gray-700 dark:text-gray-300">{scannedListing.description}</p>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <Button
-                      onClick={() => router.push(`/p2p-swap/${scannedListing.id}`)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-                    >
-                      View Details
-                    </Button>
-                    
-                    <Button
-                      onClick={() => router.push(`/p2p-swap/${scannedListing.id}`)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
-                    >
-                      Buy Now
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+                <DialogFooter className="px-6 py-4 border-t border-gray-800 flex justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-gray-300 border-gray-700 hover:bg-gray-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handlePurchase}
+                    disabled={isSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isSubmitting ? 'Processing...' : `Buy for ${scannedListing.price} ETH`}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Available Listings Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Available Blocknogotchi</h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Browse all Blocknogotchi currently available for trade
+            </p>
           </div>
-        )}
+          
+          <ListingsGrid />
+        </div>
       </div>
+      
     </div>
   );
-} 
+}

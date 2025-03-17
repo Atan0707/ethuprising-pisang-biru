@@ -12,6 +12,10 @@ const p2pSwapGraphClient = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
+// Add this constant at the top with other imports
+const PINATA_GATEWAY = 'https://plum-tough-mongoose-147.mypinata.cloud/ipfs/';
+console.log('PINATA_GATEWAY URL:', PINATA_GATEWAY);
+
 // GraphQL query to get P2P swap listings
 const GET_P2P_LISTINGS = gql`
   query GetP2PListings {
@@ -244,31 +248,173 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
       
       try {
         // Get Blockmon data from the contract
-        const blockmonData = await blockmonContract.getBlockmon(tokenId);
+        const blockmonData = await blockmonContract.getBlocknogotchi(tokenId);
         
         // Get token URI and fetch metadata if available
         let name = `Blockmon #${tokenId}`;
         let image = `/blockmon/default.png`;
         
         try {
-          const tokenURI = await blockmonContract.tokenURI(tokenId);
-          if (tokenURI) {
-            // If the tokenURI is an IPFS URI, convert it to a gateway URL
-            const formattedURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
-            const metadataResponse = await fetch(formattedURI);
-            const metadata = await metadataResponse.json();
+          const tokenURI = blockmonData.tokenURI;
+          console.log(`Token ${tokenId} - Original tokenURI:`, tokenURI);
+          
+          if (!tokenURI || tokenURI === '') {
+            console.warn(`Token ${tokenId} - Empty tokenURI, using default image`);
+            // Try to get tokenURI directly from contract
+            try {
+              const directTokenURI = await blockmonContract.tokenURI(tokenId);
+              console.log(`Token ${tokenId} - Direct tokenURI from contract:`, directTokenURI);
+              
+              if (directTokenURI && directTokenURI !== '') {
+                // Check if the URI is likely an image by extension or content type
+                const isLikelyImage = directTokenURI.match(/\.(jpg|jpeg|png|gif|svg|webp)($|\?)/i) !== null;
+                
+                if (isLikelyImage) {
+                  console.log(`Token ${tokenId} - Direct tokenURI appears to be an image:`, directTokenURI);
+                  image = directTokenURI;
+                } else {
+                  // Convert IPFS URI to Pinata gateway URL
+                  const formattedURI = directTokenURI.replace('ipfs://', PINATA_GATEWAY);
+                  console.log(`Token ${tokenId} - Formatted URI from direct call:`, formattedURI);
+                  
+                  try {
+                    // Check content type before trying to parse as JSON
+                    const headResponse = await fetch(formattedURI, { method: 'HEAD' });
+                    const contentType = headResponse.headers.get('content-type');
+                    console.log(`Token ${tokenId} - Content type:`, contentType);
+                    
+                    if (contentType && contentType.includes('image/')) {
+                      // It's an image, use it directly
+                      console.log(`Token ${tokenId} - URI is a direct image:`, formattedURI);
+                      image = formattedURI;
+                    } else if (contentType && contentType.includes('application/json')) {
+                      // It's JSON, try to parse it
+                      const metadataResponse = await fetch(formattedURI);
+                      console.log(`Token ${tokenId} - Metadata response status from direct call:`, metadataResponse.status);
+                      
+                      if (metadataResponse.ok) {
+                        const metadata = await metadataResponse.json();
+                        console.log(`Token ${tokenId} - Metadata from direct call:`, metadata);
+                        
+                        name = metadata.name || name;
+                        image = metadata.image || image;
+                        console.log(`Token ${tokenId} - Image from direct call metadata:`, image);
+                        
+                        // Handle different IPFS URL formats
+                        if (image.startsWith('ipfs://')) {
+                          image = image.replace('ipfs://', PINATA_GATEWAY);
+                          console.log(`Token ${tokenId} - Converted IPFS image URL from direct call:`, image);
+                        } else if (image.includes('/ipfs/')) {
+                          const cid = image.split('/ipfs/')[1];
+                          image = `${PINATA_GATEWAY}${cid}`;
+                          console.log(`Token ${tokenId} - Converted /ipfs/ image URL from direct call:`, image);
+                        }
+                      }
+                    } else {
+                      // Try to use the URI directly as image
+                      console.log(`Token ${tokenId} - Using URI directly as image:`, formattedURI);
+                      image = formattedURI;
+                    }
+                  } catch (parseError) {
+                    console.error(`Token ${tokenId} - Error processing URI:`, parseError);
+                    // Use the URI directly as image
+                    image = formattedURI;
+                  }
+                }
+              }
+            } catch (directError) {
+              console.error(`Token ${tokenId} - Error fetching direct tokenURI:`, directError);
+            }
+          } else {
+            // Check if the URI is likely an image by extension or content type
+            const isLikelyImage = tokenURI.match(/\.(jpg|jpeg|png|gif|svg|webp)($|\?)/i) !== null;
             
-            name = metadata.name || name;
-            image = metadata.image || image;
-            
-            // If the image is an IPFS URI, convert it to a gateway URL
-            if (image.startsWith('ipfs://')) {
-              image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            if (isLikelyImage) {
+              console.log(`Token ${tokenId} - TokenURI appears to be an image:`, tokenURI);
+              image = tokenURI;
+            } else {
+              // Convert IPFS URI to Pinata gateway URL
+              const formattedURI = tokenURI.replace('ipfs://', PINATA_GATEWAY);
+              console.log(`Token ${tokenId} - Formatted URI:`, formattedURI);
+              
+              try {
+                // Check content type before trying to parse as JSON
+                const headResponse = await fetch(formattedURI, { method: 'HEAD' });
+                const contentType = headResponse.headers.get('content-type');
+                console.log(`Token ${tokenId} - Content type:`, contentType);
+                
+                if (contentType && contentType.includes('image/')) {
+                  // It's an image, use it directly
+                  console.log(`Token ${tokenId} - URI is a direct image:`, formattedURI);
+                  image = formattedURI;
+                } else if (contentType && contentType.includes('application/json')) {
+                  // It's JSON, try to parse it
+                  const metadataResponse = await fetch(formattedURI);
+                  console.log(`Token ${tokenId} - Metadata response status:`, metadataResponse.status);
+                  
+                  if (!metadataResponse.ok) {
+                    console.error(`Token ${tokenId} - Failed to fetch metadata: ${metadataResponse.status} ${metadataResponse.statusText}`);
+                    throw new Error(`Failed to fetch metadata: ${metadataResponse.status}`);
+                  }
+                  
+                  const metadata = await metadataResponse.json();
+                  console.log(`Token ${tokenId} - Metadata:`, metadata);
+                  
+                  name = metadata.name || name;
+                  image = metadata.image || image;
+                  console.log(`Token ${tokenId} - Image from metadata:`, image);
+                  
+                  // Handle different IPFS URL formats
+                  if (image.startsWith('ipfs://')) {
+                    image = image.replace('ipfs://', PINATA_GATEWAY);
+                    console.log(`Token ${tokenId} - Converted IPFS image URL:`, image);
+                  } else if (image.includes('/ipfs/')) {
+                    const cid = image.split('/ipfs/')[1];
+                    image = `${PINATA_GATEWAY}${cid}`;
+                    console.log(`Token ${tokenId} - Converted /ipfs/ image URL:`, image);
+                  }
+                } else {
+                  // Try to use the URI directly as image
+                  console.log(`Token ${tokenId} - Using URI directly as image:`, formattedURI);
+                  image = formattedURI;
+                }
+              } catch (parseError) {
+                console.error(`Token ${tokenId} - Error processing URI:`, parseError);
+                // Use the URI directly as image
+                image = formattedURI;
+              }
             }
           }
         } catch (error) {
           console.warn(`Error fetching metadata for token ${tokenId}:`, error);
-          // Use default values if metadata fetch fails
+          // Try to get tokenURI directly as a fallback
+          try {
+            const directTokenURI = await blockmonContract.tokenURI(tokenId);
+            console.log(`Token ${tokenId} - Fallback direct tokenURI:`, directTokenURI);
+            
+            if (directTokenURI && directTokenURI !== '') {
+              // Convert IPFS URI to Pinata gateway URL
+              const formattedURI = directTokenURI.replace('ipfs://', PINATA_GATEWAY);
+              
+              const metadataResponse = await fetch(formattedURI);
+              if (metadataResponse.ok) {
+                const metadata = await metadataResponse.json();
+                
+                name = metadata.name || name;
+                image = metadata.image || image;
+                
+                // Handle different IPFS URL formats
+                if (image.startsWith('ipfs://')) {
+                  image = image.replace('ipfs://', PINATA_GATEWAY);
+                } else if (image.includes('/ipfs/')) {
+                  const cid = image.split('/ipfs/')[1];
+                  image = `${PINATA_GATEWAY}${cid}`;
+                }
+              }
+            }
+          } catch (fallbackError) {
+            console.error(`Token ${tokenId} - Fallback tokenURI fetch failed:`, fallbackError);
+          }
         }
         
         return {
@@ -277,9 +423,9 @@ export const getP2PListings = async (): Promise<P2PListing[]> => {
           image,
           price: ethers.formatEther(listing.price),
           seller: listing.seller,
-          attribute: blockmonData.attribute,
-          rarity: blockmonData.rarity,
-          level: blockmonData.level,
+          attribute: Number(blockmonData.attribute),
+          rarity: Number(blockmonData.rarity),
+          level: Number(blockmonData.level),
           status: 'active' as const
         };
       } catch (error) {
@@ -316,10 +462,10 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
 
     // Create a provider to interact with the blockchain
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const blockmonContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
+    const blocknogotchiContract = new ethers.Contract(BLOCKNOGOTCHI_CONTRACT_ADDRESS, BlocknogotchiContract.abi, provider);
     
     // Get Blockmon data from the contract
-    const blockmonData = await blockmonContract.getBlockmon(tokenId);
+    const blockmonData = await blocknogotchiContract.getBlocknogotchi(tokenId);
     
     // Get token URI and fetch metadata if available
     let name = `Blockmon #${tokenId}`;
@@ -327,10 +473,10 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
     let description = "A mysterious Blockmon.";
     
     try {
-      const tokenURI = await blockmonContract.tokenURI(tokenId);
+      const tokenURI = blockmonData.tokenURI;
       if (tokenURI) {
-        // If the tokenURI is an IPFS URI, convert it to a gateway URL
-        const formattedURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+        // Convert IPFS URI to Pinata gateway URL
+        const formattedURI = tokenURI.replace('ipfs://', PINATA_GATEWAY);
         const metadataResponse = await fetch(formattedURI);
         const metadata = await metadataResponse.json();
         
@@ -338,9 +484,12 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
         image = metadata.image || image;
         description = metadata.description || description;
         
-        // If the image is an IPFS URI, convert it to a gateway URL
+        // Handle different IPFS URL formats
         if (image.startsWith('ipfs://')) {
-          image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+          image = image.replace('ipfs://', PINATA_GATEWAY);
+        } else if (image.includes('/ipfs/')) {
+          const cid = image.split('/ipfs/')[1];
+          image = `${PINATA_GATEWAY}${cid}`;
         }
       }
     } catch (error) {
@@ -419,12 +568,12 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
     if (cancellationEvent) status = 'cancelled';
     if (claimEvent) status = 'claimed';
     
-    // Calculate stats based on blockmon data
+    // Calculate stats based on blockmon data - convert BigInt to number
     const stats = {
-      hp: blockmonData.hp,
-      attack: blockmonData.baseDamage,
-      defense: Math.floor(blockmonData.hp * 0.5), // Example calculation
-      speed: Math.floor(blockmonData.level * 5) // Example calculation
+      hp: Number(blockmonData.hp),
+      attack: Number(blockmonData.baseDamage),
+      defense: Math.floor(Number(blockmonData.hp) * 0.5), // Example calculation
+      speed: Math.floor(Number(blockmonData.level) * 5) // Example calculation
     };
     
     // Create the detailed listing object
@@ -434,29 +583,29 @@ export const getP2PListingDetails = async (tokenId: number): Promise<DetailedP2P
       image,
       price: ethers.formatEther(listing.price),
       seller: listing.seller,
-      attribute: getAttributeString(blockmonData.attribute),
-      rarity: getRarityString(blockmonData.rarity),
-      level: blockmonData.level,
+      attribute: getAttributeString(Number(blockmonData.attribute)),
+      rarity: getRarityString(Number(blockmonData.rarity)),
+      level: Number(blockmonData.level),
       description,
       status,
       stats,
       history,
       rawData: {
         name,
-        attribute: blockmonData.attribute,
-        rarity: blockmonData.rarity,
-        level: blockmonData.level,
-        hp: blockmonData.hp,
-        baseDamage: blockmonData.baseDamage,
-        battleCount: blockmonData.battleCount,
-        battleWins: blockmonData.battleWins,
-        birthTime: blockmonData.birthTime,
-        lastBattleTime: blockmonData.lastBattleTime,
+        attribute: Number(blockmonData.attribute),
+        rarity: Number(blockmonData.rarity),
+        level: Number(blockmonData.level),
+        hp: Number(blockmonData.hp),
+        baseDamage: Number(blockmonData.baseDamage),
+        battleCount: Number(blockmonData.battleCount),
+        battleWins: Number(blockmonData.battleWins),
+        birthTime: Number(blockmonData.birthTime),
+        lastBattleTime: Number(blockmonData.lastBattleTime),
         claimed: blockmonData.claimed,
         owner: blockmonData.owner,
-        tokenURI: await blockmonContract.tokenURI(tokenId),
-        age: Math.floor((Date.now() / 1000) - blockmonData.birthTime),
-        experience: blockmonData.level * 100 // Example calculation
+        tokenURI: await blocknogotchiContract.tokenURI(tokenId),
+        age: Math.floor((Date.now() / 1000) - Number(blockmonData.birthTime)),
+        experience: Number(blockmonData.level) * 100 // Example calculation
       }
     };
     

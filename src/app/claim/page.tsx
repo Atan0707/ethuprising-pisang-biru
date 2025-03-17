@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
 import { Eip1193Provider, ethers } from "ethers";
@@ -9,7 +9,7 @@ import ClaimSuccess from "@/app/components/claim/ClaimSuccess";
 import { toast } from "sonner";
 import { BLOCKNOGOTCHI_CONTRACT_ADDRESS } from "@/app/utils/config";
 import BlocknogotchiContract from "@/contract/BlocknogotchiContract.json";
-
+import { useSearchParams } from "next/navigation";
 
 // Type for event logs
 interface EventLog {
@@ -28,6 +28,8 @@ export default function ClaimPage() {
     image: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessingUrlHash, setIsProcessingUrlHash] = useState(false);
+  const searchParams = useSearchParams();
   // const [debugHash, setDebugHash] = useState<string | null>(null);
 
   // Ensure component is mounted to avoid hydration issues
@@ -35,84 +37,11 @@ export default function ClaimPage() {
     setMounted(true);
   }, []);
 
-  // Debug function to get the latest claim hash
-  // const getLatestClaimHash = async () => {
-  //   if (!isConnected || !address || !walletProvider) {
-  //     setError("Please connect your wallet to debug");
-  //     return;
-  //   }
-
-  //   try {
-  //     const provider = new ethers.BrowserProvider(
-  //       walletProvider as Eip1193Provider
-  //     );
-  //     const signer = await provider.getSigner();
-  //     const contract = new ethers.Contract(
-  //       CONTRACT_ADDRESS,
-  //       CONTRACT_ABI,
-  //       signer
-  //     );
-
-  //     // Create a new pet to get the claim hash
-  //     const createTx = await contract.createPokemon(
-  //       "Debug Pokemon",
-  //       0, // FIRE species
-  //       0, // COMMON rarity
-  //       "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreigryiqie52hop6px6afkv4bzixkcxjp5izl2fehcotjnvbmgdpwnq"
-  //     );
-
-  //     // Wait for transaction to be mined
-  //     const receipt = await createTx.wait();
-
-  //     // Parse the event to get tokenId and claimHash
-  //     const event = receipt.logs
-  //       .map((log: unknown) => {
-  //         try {
-  //           return contract.interface.parseLog(
-  //             log as { topics: string[]; data: string }
-  //           );
-  //         } catch {
-  //           return null;
-  //         }
-  //       })
-  //       .find(
-  //         (event: EventLog | null) => event && event.name === "PokemonCreated"
-  //       );
-
-  //     if (event && event.args && event.args.length >= 2) {
-  //       const tokenId = event.args[0].toString();
-  //       const claimHash = event.args[1];
-
-  //       setDebugHash(claimHash);
-  //       toast.info("New Claim Hash Created", {
-  //         description: `Token ID: ${tokenId}, Hash: ${claimHash.slice(
-  //           0,
-  //           10
-  //         )}...`,
-  //         duration: 10000,
-  //       });
-
-  //       console.log("New token ID:", tokenId);
-  //       console.log("Claim hash:", claimHash);
-
-  //       return claimHash;
-  //     } else {
-  //       throw new Error("Failed to parse PokemonCreated event");
-  //     }
-  //   } catch (err) {
-  //     console.error("Error getting claim hash:", err);
-  //     setError(
-  //       "Error getting claim hash: " +
-  //         (err instanceof Error ? err.message : String(err))
-  //     );
-  //     return null;
-  //   }
-  // };
-
   // Handle claim with hash from NFC card
-  const handleClaim = async (claimHash: string) => {
+  const handleClaim = useCallback(async (claimHash: string) => {
     if (!isConnected || !address || !walletProvider) {
       setError("Please connect your wallet to claim");
+      setIsProcessingUrlHash(false);
       return;
     }
 
@@ -204,8 +133,102 @@ export default function ClaimPage() {
       setError(
         "Error claiming: " + (err instanceof Error ? err.message : String(err))
       );
+    } finally {
+      setIsProcessingUrlHash(false);
     }
-  };
+  }, [address, claimResult, isConnected, walletProvider]);
+
+  // Check for hash parameter in URL
+  useEffect(() => {
+    if (mounted && isConnected && !claimResult && !isProcessingUrlHash) {
+      const hashParam = searchParams.get("hash");
+      
+      if (hashParam) {
+        setIsProcessingUrlHash(true);
+        toast.info("Hash Detected", {
+          description: "Found claim hash in URL. Processing your claim...",
+          icon: "🔍",
+        });
+        
+        // Process the hash from URL
+        handleClaim(hashParam);
+      }
+    }
+  }, [mounted, isConnected, searchParams, claimResult, isProcessingUrlHash, handleClaim]);
+
+  // Debug function to get the latest claim hash
+  // const getLatestClaimHash = async () => {
+  //   if (!isConnected || !address || !walletProvider) {
+  //     setError("Please connect your wallet to debug");
+  //     return;
+  //   }
+
+  //   try {
+  //     const provider = new ethers.BrowserProvider(
+  //       walletProvider as Eip1193Provider
+  //     );
+  //     const signer = await provider.getSigner();
+  //     const contract = new ethers.Contract(
+  //       CONTRACT_ADDRESS,
+  //       CONTRACT_ABI,
+  //       signer
+  //     );
+
+  //     // Create a new pet to get the claim hash
+  //     const createTx = await contract.createPokemon(
+  //       "Debug Pokemon",
+  //       0, // FIRE species
+  //       0, // COMMON rarity
+  //       "https://plum-tough-mongoose-147.mypinata.cloud/ipfs/bafkreigryiqie52hop6px6afkv4bzixkcxjp5izl2fehcotjnvbmgdpwnq"
+  //     );
+
+  //     // Wait for transaction to be mined
+  //     const receipt = await createTx.wait();
+
+  //     // Parse the event to get tokenId and claimHash
+  //     const event = receipt.logs
+  //       .map((log: unknown) => {
+  //         try {
+  //           return contract.interface.parseLog(
+  //             log as { topics: string[]; data: string }
+  //           );
+  //         } catch {
+  //           return null;
+  //         }
+  //       })
+  //       .find(
+  //         (event: EventLog | null) => event && event.name === "PokemonCreated"
+  //       );
+
+  //     if (event && event.args && event.args.length >= 2) {
+  //       const tokenId = event.args[0].toString();
+  //       const claimHash = event.args[1];
+
+  //       setDebugHash(claimHash);
+  //       toast.info("New Claim Hash Created", {
+  //         description: `Token ID: ${tokenId}, Hash: ${claimHash.slice(
+  //           0,
+  //           10
+  //         )}...`,
+  //         duration: 10000,
+  //       });
+
+  //       console.log("New token ID:", tokenId);
+  //       console.log("Claim hash:", claimHash);
+
+  //       return claimHash;
+  //     } else {
+  //       throw new Error("Failed to parse PokemonCreated event");
+  //     }
+  //   } catch (err) {
+  //     console.error("Error getting claim hash:", err);
+  //     setError(
+  //       "Error getting claim hash: " +
+  //         (err instanceof Error ? err.message : String(err))
+  //     );
+  //     return null;
+  //   }
+  // };
 
   if (!mounted) return null;
 

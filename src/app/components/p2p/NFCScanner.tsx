@@ -1,24 +1,14 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { isNfcSupported, readFromNfcTag, getNfcSerialNumber } from '@/app/utils/nfc'
+import { Button } from '@/components/ui/button'
 
 interface NFCScannerProps {
   isScanning: boolean
   setIsScanning: (scanning: boolean) => void
-  onScan: (hash: string) => void
+  onScan: (hash: string, serialNumber: string) => void
   error: string | null
-}
-
-// Type for NFC reading event
-interface NFCReadingEvent {
-  message: {
-    records: Array<{
-      recordType: string;
-      data: ArrayBuffer;
-    }>;
-  };
 }
 
 export default function NFCScanner({ isScanning, setIsScanning, onScan, error }: NFCScannerProps) {
@@ -28,8 +18,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
   // Check if NFC is supported
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Check if NDEFReader is available in the window object
-      const supported = 'NDEFReader' in window
+      const supported = isNfcSupported()
       setNfcSupported(supported)
       
       if (!supported) {
@@ -53,52 +42,65 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
     })
     
     try {
-      // @ts-expect-error - NDEFReader is not in the TypeScript types yet
-      const ndef = new window.NDEFReader()
+      // Get the serial number first for verification
+      const serialNumber = await getNfcSerialNumber()
       
-      await ndef.scan()
+      // Then read the data from the NFC tag
+      const nfcData = await readFromNfcTag({ timeoutMs: 15000 }) // 15 second timeout
       
-      ndef.addEventListener("reading", ({ message }: NFCReadingEvent) => {
-        // Process NDEF message
-        for (const record of message.records) {
-          if (record.recordType === "text") {
-            const textDecoder = new TextDecoder()
-            const hash = textDecoder.decode(record.data)
-            
-            toast.dismiss(scanToastId)
-            toast.success('NFC Card Detected', {
-              description: 'Successfully read the claim hash from your NFC card.',
-              icon: '✅',
-            })
-            
-            onScan(hash)
-          }
-        }
+      // Validate the NFC data
+      if (!nfcData) {
+        throw new Error('No data read from NFC card')
+      }
+      
+      // Ensure the hash is in the correct format
+      const hash = nfcData.startsWith('0x') ? nfcData : `0x${nfcData}`
+      
+      // Combine hash and serial number for verification
+      const hashData = serialNumber ? `${hash}:${serialNumber}` : hash
+      
+      toast.dismiss(scanToastId)
+      toast.success('NFC Card Detected', {
+        description: 'Successfully read the hash from your NFC card.',
+        icon: '✅',
       })
+      
+      onScan(hashData, serialNumber)
     } catch (error) {
       console.error('Error scanning NFC:', error)
       setIsScanning(false)
       
       toast.dismiss(scanToastId)
-      toast.error('Scanning Failed', {
-        description: 'Failed to scan NFC card. Please try again or enter the hash manually.',
-        icon: '❌',
-      })
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          toast.error('Scan timed out. Please try again and hold your card closer to the device.')
+        } else if (error.message.includes('permission')) {
+          toast.error('NFC permission denied. Please allow NFC access in your browser settings.')
+        } else if (error.message.includes('No data')) {
+          toast.error('No valid data found on NFC card. Please ensure this is the correct card.')
+        } else {
+          toast.error(error.message)
+        }
+      } else {
+        toast.error('Failed to scan NFC card. Please try again.')
+      }
     }
   }
 
   // Handle manual hash submission
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleManualSubmit = (e: React.MouseEvent) => {
     e.preventDefault()
     if (manualHash.trim()) {
       toast('Processing Hash', {
-        description: 'Submitting the claim hash you entered...',
+        description: 'Submitting the hash you entered...',
         icon: '🔍',
       })
-      onScan(manualHash.trim())
+      onScan(manualHash.trim(), '')
     } else {
       toast.error('Empty Hash', {
-        description: 'Please enter a valid claim hash.',
+        description: 'Please enter a valid hash.',
         icon: '⚠️',
       })
     }
@@ -107,7 +109,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
   // Show toast when error occurs
   useEffect(() => {
     if (error) {
-      toast.error('Claim Error', {
+      toast.error('Verification Error', {
         description: error,
         icon: '❌',
       })
@@ -166,11 +168,11 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
           </div>
           
           <p className="mb-6 text-gray-600 dark:text-gray-300 text-center">
-            Bring your NFC card close to your device to claim your Blocknogotchi pet.
+            Bring your NFC card close to your device to verify ownership and list your Blockmon.
           </p>
           
           {nfcSupported && (
-            <button
+            <Button
               onClick={startScanning}
               disabled={isScanning}
               className={`w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md flex items-center justify-center gap-2 transition-all ${isScanning ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
@@ -188,7 +190,7 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
                   <span>Start NFC Scan</span>
                 </>
               )}
-            </button>
+            </Button>
           )}
         </div>
         
@@ -205,38 +207,37 @@ export default function NFCScanner({ isScanning, setIsScanning, onScan, error }:
           
           <div className="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-6">
             <p className="mb-4 text-gray-600 dark:text-gray-300">
-              Enter the claim hash from your NFC card to claim your Blocknogotchi pet.
+              Enter the hash from your NFC card to verify ownership and list your Blockmon.
             </p>
             
-            <form onSubmit={handleManualSubmit}>
+            <div>
               <div className="mb-4">
                 <label htmlFor="hash-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Claim Hash
+                  Hash
                 </label>
                 <input
                   id="hash-input"
                   type="text"
                   value={manualHash}
                   onChange={(e) => setManualHash(e.target.value)}
-                  placeholder="Enter claim hash from NFC card"
+                  placeholder="Enter hash from NFC card"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-md transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 font-medium"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Claim with Hash
-                </button>
-                
-              </div>
-            </form>
-                   
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleManualSubmit(e);
+                }}
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-md transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 font-medium"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Verify with Hash
+              </button>
+            </div>
           </div>
         </div>
       </div>
