@@ -281,18 +281,10 @@ function Battle() {
   }, []);
 
   useEffect(() => {
-    // Change to use wss:// for secure WebSocket connection
-    const socketUrl = "wss://167.99.77.31:3006";
+    const socketUrl = "http://167.99.77.31:3006/";
     const newSocket = io(socketUrl, {
       reconnection: true,
       secure: true,
-      transports: ["websocket"], // Force WebSocket transport only
-      rejectUnauthorized: false, // Allow self-signed certificates if you're using them
-    });
-
-    // Add error handling for connection issues
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
     });
 
     // Select random blockmons for player and opponent
