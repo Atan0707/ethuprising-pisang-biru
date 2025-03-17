@@ -158,16 +158,7 @@ export default function Navbar() {
               >
                 Check
               </Link>
-              <Link
-                href="/arena"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/arena")
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                }`}
-              >
-                Arena
-              </Link>
+
               <Link
                 href="/p2p"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -355,17 +346,7 @@ export default function Navbar() {
               >
                 Check
               </Link>
-              <Link
-                href="/arena"
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive("/arena")
-                    ? "text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-800"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Arena
-              </Link>
+
               {/* <Link
                 href="/marketplace"
                 className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${

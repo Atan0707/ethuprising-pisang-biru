@@ -13,7 +13,7 @@ const projectId = WALLETCONNECT_PROJECT_ID;
 const metadata = {
   name: "Blocknogotchi",
   description: "Blocknogotchi",
-  url: "https://5cb83tf0-3000.asse.devtunnels.ms/", // origin must match your domain & subdomain
+  url: "https://blocknogotchi.fun/", // origin must match your domain & subdomain
   icons: ["https://blocknogotchi.fun/favicon.ico"], // Updated to use your favicon
 };
 

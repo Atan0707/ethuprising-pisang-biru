@@ -24,12 +24,16 @@ export async function POST(request: Request) {
       });
     }
 
+    // Get private key from environment variable
+    const privateKey = process.env.NEXT_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error("Private key not found in environment variables");
+    }
+
     // Initialize provider and wallet
     const provider = new ethers.JsonRpcProvider(
       "https://sepolia-rpc.scroll.io/"
     );
-    const privateKey =
-      "0c230509ed25afe2f168577b7b406ae6914431e2caa3a9babf42ec23518250ad";
     const wallet = new ethers.Wallet(privateKey, provider);
 
     // Initialize contract with signer
