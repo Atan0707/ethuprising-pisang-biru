@@ -284,7 +284,9 @@ function Battle() {
     const socketUrl = "http://167.99.77.31:3006/";
     const newSocket = io(socketUrl, {
       reconnection: true,
-      secure: false,
+      secure: false, // Change this to false
+      transports: ["websocket"], // Force WebSocket transport
+      rejectUnauthorized: false, // Allow unsecure connections
     });
 
     // Select random blockmons for player and opponent
