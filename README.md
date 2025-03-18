@@ -6,6 +6,11 @@ Checkout here: [https://www.blocknogotchi.fun/](https://www.blocknogotchi.fun/)
 
 ![image](https://github.com/user-attachments/assets/3012dad3-4be4-40de-8456-24edf843d96b)
 
+![image](https://github.com/user-attachments/assets/1b9ed62d-c5a7-4498-a5de-f1bcf0ef8cce)
+
+![image](https://github.com/user-attachments/assets/dc142a12-9fc0-410d-b411-66b7e6071de8)
+
+![image](https://github.com/user-attachments/assets/b95364e7-b2b6-4fbb-b364-c633fcc4d2e0)
 
 ## Features
 
@@ -132,8 +137,7 @@ yarn build
    - Set your desired price
    - Create the listing
 4. To purchase an NFT:
-   - Browse available listings
-   - Select the NFT you want to purchase
+   - Scan NFC card
    - Complete the purchase transaction
 5. To claim a purchased NFT:
    - Scan your physical NFC card
@@ -142,12 +146,6 @@ yarn build
 ## Technical Implementation
 
 The NFC functionality is implemented using the Web NFC API, which allows web applications to read and write to NFC tags. The application uses this to verify that the user possesses the physical card associated with the NFT.
-
-### Security Considerations
-
-- The NFC data is hashed before being sent to the blockchain
-- The NFC serial number is combined with the data for additional security
-- All transactions require wallet signatures for authentication
 
 ## Development
 
