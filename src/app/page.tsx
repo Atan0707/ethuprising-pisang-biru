@@ -165,7 +165,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {/* <Link
+            <Link
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
               href="/mint"
             >
@@ -176,7 +176,7 @@ export default function Home() {
                 height={24}
               />
               Mint a Blocknogotchi
-            </Link> */}
+            </Link>
             <Link
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
               href="/claim"
