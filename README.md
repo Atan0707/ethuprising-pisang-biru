@@ -1,6 +1,6 @@
 # [Blocknogotchi](https://www.blocknogotchi.fun/)
 
-Blocknogotchi is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world.
+Blocknogotchi is a blockchain-based digital monster fighting game with NFC card as your buddy. Fight together and be the best in the whole world. 
 
 Checkout here: [https://www.blocknogotchi.fun/](https://www.blocknogotchi.fun/)
 
